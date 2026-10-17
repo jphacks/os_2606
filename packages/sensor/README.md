@@ -27,12 +27,25 @@ dtoverlay=dht11,gpiopin=4
 抵抗のないセンサーでは、DATAと3.3Vの間にプルアップ抵抗が必要です。
 同じGPIOを使うPythonプログラムや赤外線ドライバーとは併用できません。
 
-### API
+### CLI
+
+リポジトリのルートで実行すると、温湿度を1回測定してJSONで出力します。
 
 ```sh
 pnpm install
 pnpm --filter @os/sensor build
+pnpm sensor measure
 ```
+
+出力例（温度は°C、湿度は相対湿度%）:
+
+```json
+{"temperature":26.5,"humidity":39.8}
+```
+
+読み取りに失敗した場合は、標準エラー出力に原因を表示して終了コード1を返します。
+
+### API
 
 ```ts
 import type { TemperatureSensor } from "@os/api";
