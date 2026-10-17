@@ -46,6 +46,9 @@ importers:
 
   packages/sensor:
     dependencies:
+      '@os/api':
+        specifier: workspace:*
+        version: link:../api
       '@os/core':
         specifier: workspace:*
         version: link:../core
