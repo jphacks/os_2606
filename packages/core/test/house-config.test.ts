@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
-import { getHouseConfig, updateHouseConfig } from "./house-config.js";
+import { getHouseConfig, updateHouseConfig } from "../src/house-config.js";
 
 let dir: string;
 let path: string;
