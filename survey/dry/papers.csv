@@ -1,0 +1,16 @@
+﻿id,year,title,experiment_category,observed_data,extraction_note,priority,source_url
+Sato2024,2024,住宅内の温湿度環境を改善するための空調空気共有技術の効果実証 第2報,住宅室内干し,10条件の乾燥時間・平均温湿度・外気,表4;すでに既存データに収録,既存データ,https://www.jstage.jst.go.jp/article/shasetaikai/2024.06/0/2024.06_113/_article/-char/ja
+Debata2010,2010,実測に基づく室内干し時における洗濯物の乾燥時間および室内温湿度環境,住宅室内干し,乾燥時間と温湿度・水分重量の推移,グラフ数値化候補;条件の違いに注意,高,https://kidsdesign.jp/pdf/08_datasheets.pdf
+Yagi2017,2017,家庭洗濯の室内干しや機械乾燥における乾燥時間および省エネルギー効果,家庭用エアコン,2kg衣類・ルームエアコン比較・乾燥率97%,抄録中心;詳細値未取得,高,https://doi.org/10.11428/kasei.69.0_71
+Kawaguchi1974,1974,常温乾燥による布の乾燥速度について,布片・無風環境,10/20/30℃; RH10〜70%; 乾燥速度曲線,PDF図3等を数値化;布片の速度として扱う,高,https://www.jstage.jst.go.jp/article/senshoshi1960/15/2/15_2_59/_pdf
+Shinohara2014,2014,布の水移動特性に関する実験の開発,布片・素材比較,15素材の吸水量平均とSD(n=5); 乾燥時間散布図(24.7℃・37%RH),表4吸水量は直接収録可;乾燥時間はグラフ数値化,高,https://www.jstage.jst.go.jp/article/jcrdajp/37/3/37_1/_pdf/-char/ja
+HomeEc2012,2012,小学校家庭科「衣服の着方」に関する授業開発,布片・素材比較,PETタフタ5分; PETシャツ10分; 綿ブロード50分; 綿ニット70分,実験条件・乾燥判定を詳細照合して追加,高,https://www.jstage.jst.go.jp/article/kasei/64/0/64_49/_article/-char/ja
+Onodera2007,2007,新しい繊維材料を用いた教材開発 ―吸水・速乾性繊維の実験教材―,布片・素材比較,素材別の乾燥時間と乾燥速度曲線を測定,抄録に条件別数値なし,中,https://www.jstage.jst.go.jp/article/kasei/59/0/59_0_132/_article/-char/ja
+Fukuda2002,2002,浴室用衣類乾燥機の性能シミュレーションと実験,浴室乾燥機,乾燥時間・換気風量・室外温湿度・投入熱量,本文表とグラフの確認候補;家庭用ルームエアコンと別,中,https://www.jstage.jst.go.jp/article/shase/27/86/27_KJ00006792414/_article/-char/ja
+Akamatsu1956,1956,織布の乾燥実験について,布片・工業乾燥,温度・風速別の乾燥曲線/速度,高温設備のため直接混合不可,中,https://www.jstage.jst.go.jp/article/transjtmsj1948/9/6/9_6_396/_article/-char/ja/
+Ueda1951,1951,Drying of Fabrics,布片・工業乾燥,乾燥条件別の乾燥曲線,熱風・加熱金属板方式;家庭室内干しと別,中,https://www.jstage.jst.go.jp/article/kikai1938/17/62/17_62_188/_article/-char/en
+Cotton1985,1985,恒温乾燥機内における綿布の乾燥と温度の関係,布片・恒温機,20〜70℃の6温度条件・恒率乾燥速度の実験式,家庭温度の範囲外が多い,中,https://www.jstage.jst.go.jp/article/jhej1951/36/4/36_4_234/_pdf/-char/ja
+Yamaguchi2006,2006,LCA解析手法を用いた衣類乾燥の環境負荷削減のための評価,機械乾燥,2.6kg; 電気約4時間2.8kWh・ガス35分,省エネ目的の別系統データ,低,https://www.jstage.jst.go.jp/article/kasei/58/0/58_0_88/_article/-char/ja
+Thevenet2025,2025,Indoor laundry drying: Full-scale determination of water emission rate and impact on thermal comfort,室内干し・海外,40m³室内; 水分約2kg; 蒸発速度の時系列,本文/補足データの抽出候補,高,https://www.sciencedirect.com/science/article/pii/S2950362025000189
+Drum2018,2018,Influence of drum inlet air conditions on drying process in a domestic tumble dryer,機械乾燥・海外,綿8kg; 空気温湿度操作・乾燥時間,ドラム回転・熱風のため直接混合不可,低,https://www.tandfonline.com/doi/full/10.1080/07373937.2018.1461111
+Gas2019,2019,Simulation and Experimental Study on Drying Process of the Household Gas Clothes Dryer,機械乾燥・海外,温湿度センサ生データの補足ZIPあり,室内干しの目的変数には不適,低,https://onlinelibrary.wiley.com/doi/10.1155/2019/1732197
