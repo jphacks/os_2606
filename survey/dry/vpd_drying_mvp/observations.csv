@@ -1,0 +1,11 @@
+study,condition,temp_c,rh_pct,drying_hours,air_transport,source,input_window
+Sato_2024,1,20.7,42.2,6.716666666666667,1,https://doi.org/10.18948/shasetaikai.2024.06.0_113,drying-period average
+Sato_2024,1,18.7,48.1,10.2,0,https://doi.org/10.18948/shasetaikai.2024.06.0_113,drying-period average
+Sato_2024,2,17.8,34.0,4.95,1,https://doi.org/10.18948/shasetaikai.2024.06.0_113,drying-period average
+Sato_2024,2,15.8,35.2,8.516666666666667,0,https://doi.org/10.18948/shasetaikai.2024.06.0_113,drying-period average
+Sato_2024,3,19.5,55.8,11.0,1,https://doi.org/10.18948/shasetaikai.2024.06.0_113,drying-period average
+Sato_2024,3,18.5,57.7,15.8,0,https://doi.org/10.18948/shasetaikai.2024.06.0_113,drying-period average
+Sato_2024,4,18.4,46.2,5.516666666666667,1,https://doi.org/10.18948/shasetaikai.2024.06.0_113,drying-period average
+Sato_2024,4,17.7,50.6,9.666666666666666,0,https://doi.org/10.18948/shasetaikai.2024.06.0_113,drying-period average
+Sato_2024,5,21.6,54.7,8.783333333333333,1,https://doi.org/10.18948/shasetaikai.2024.06.0_113,drying-period average
+Sato_2024,5,21.1,56.6,11.3,0,https://doi.org/10.18948/shasetaikai.2024.06.0_113,drying-period average
