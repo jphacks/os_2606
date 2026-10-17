@@ -17,7 +17,6 @@
 - `test: 乾燥時間の予測処理に単体テストを追加`
 - `chore: TypeScriptの設定を更新`
 
-
 ### Conditional Branching and Type Safety
 
 - Prefer `switch` statements over ternary operators for conditional branching.
