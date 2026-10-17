@@ -11,9 +11,10 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "test": "vitest run"
+    "test": "tsc -p tsconfig.test.json && vitest run"
   },
   "devDependencies": {
+    "@types/node": "^26.6.5",
     "vitest": "^5.0.5"
   }
 }
