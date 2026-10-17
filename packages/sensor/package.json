@@ -15,6 +15,7 @@
     "test:ir": "tsc -b && tsc -p tsconfig.test.json && node --import tsx --experimental-test-module-mocks --test test/*.test.ts"
   },
   "dependencies": {
+    "@os/api": "workspace:*",
     "@os/core": "workspace:*"
   },
   "devDependencies": {

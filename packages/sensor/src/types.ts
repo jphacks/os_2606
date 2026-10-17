@@ -5,6 +5,12 @@ export interface IrSignal {
   timings: number[];
 }
 
+export interface LearnedRemote {
+  version: 1;
+  protocol: "mitsubishi144" | "mitsubishi112";
+  state: number[];
+}
+
 export function validateInteger(value: unknown, min: number, max: number, name: string): number {
   if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
     throw new Error(`${name} must be an integer between ${min} and ${max}.`);
