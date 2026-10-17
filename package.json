@@ -2,22 +2,28 @@
   "name": "os_2606",
   "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=22",
-    "pnpm": ">=10"
-  },
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "build": "tsc -b",
     "typecheck": "tsc -b --noEmit",
     "clean": "tsc -b --clean",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest --passWithNoTests"
+    "test:watch": "vitest --passWithNoTests",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.88.0",
     "typescript": "^5.9.0",
     "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
   },
   "packageManager": "pnpm@10.26.2"
 }
