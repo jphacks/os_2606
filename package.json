@@ -10,11 +10,14 @@
     "preinstall": "npx only-allow pnpm",
     "build": "tsc -b",
     "typecheck": "tsc -b --noEmit",
-    "clean": "tsc -b --clean"
+    "clean": "tsc -b --clean",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest --passWithNoTests"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.5"
   },
   "packageManager": "pnpm@10.26.2"
 }
