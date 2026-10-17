@@ -11,8 +11,10 @@
     "build": "tsc -b",
     "typecheck": "tsc -b --noEmit",
     "clean": "tsc -b --clean",
-    "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest --passWithNoTests"
+    "test": "vitest run --passWithNoTests && pnpm test:ir",
+    "test:watch": "vitest --passWithNoTests",
+    "ir": "node packages/sensor/dist/cli.js",
+    "test:ir": "pnpm --filter @os/sensor test:ir"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
