@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { loadEnvFile } from "node:process";
 import { validateInteger } from "./types.js";
 
-export function loadConfig(): { rx: number; tx: number } {
+export function loadConfig(): { rx: number; tx: number; dht: number } {
   try {
     loadEnvFile();
   } catch (error) {
@@ -13,18 +13,19 @@ export function loadConfig(): { rx: number; tx: number } {
   }
 
   const env = process.env;
-  for (const key of ["IR_RX_GPIO", "IR_TX_GPIO"]) {
+  for (const key of ["IR_RX_GPIO", "IR_TX_GPIO", "DHT_GPIO"]) {
     if (env[key] !== undefined && !/^\d+$/.test(env[key]!)) {
-      throw new Error(`${key} must be a BCM GPIO number.`);
+      throw new Error(`${key}にはBCM GPIO番号を指定してください。`);
     }
   }
 
   const rx = validateInteger(Number(env.IR_RX_GPIO ?? 17), 0, 27, "IR_RX_GPIO");
   const tx = validateInteger(Number(env.IR_TX_GPIO ?? 18), 0, 27, "IR_TX_GPIO");
-  if (rx === tx) {
-    throw new Error("Receive and transmit GPIO pins must be different.");
+  const dht = validateInteger(Number(env.DHT_GPIO ?? 4), 0, 27, "DHT_GPIO");
+  if (rx === tx || rx === dht || tx === dht) {
+    throw new Error("IR_RX_GPIO、IR_TX_GPIO、DHT_GPIOには異なるGPIOピンを指定してください。");
   }
-  return { rx, tx };
+  return { rx, tx, dht };
 }
 
 export function bootConfig(): string {

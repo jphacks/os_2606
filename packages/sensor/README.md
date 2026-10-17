@@ -1,5 +1,71 @@
 # @os/sensor
 
+## 温湿度の取得（DHT11）
+
+Raspberry Piの標準DHT11ドライバーを利用します。アプリ側はTypeScriptのみで、追加ライブラリは不要です。
+温度は°C、湿度は相対湿度（%）で返します。
+
+### 配線と設定
+
+| DHT11 | Raspberry Pi |
+| --- | --- |
+| VCC | 3.3V（物理ピン1） |
+| S / DATA | GPIO4（物理ピン7） |
+| GND | GND（物理ピン6） |
+
+リポジトリのルートにある`.env`に`DHT_GPIO=4`を設定します。
+赤外線受信の既定値GPIO17との重複を避けるため、温湿度センサーにはGPIO4を使います。
+GPIO番号を変える場合は、配線・`.env`・以下のドライバー設定を同じ番号に揃えてください。
+
+`/boot/firmware/config.txt`に以下を追加し、Raspberry Piを再起動します。
+
+```ini
+dtoverlay=dht11,gpiopin=4
+```
+
+プルアップ抵抗を内蔵した3ピンのDHT11モジュールを想定しています。
+抵抗のないセンサーでは、DATAと3.3Vの間にプルアップ抵抗が必要です。
+同じGPIOを使うPythonプログラムや赤外線ドライバーとは併用できません。
+
+### CLI
+
+リポジトリのルートで実行すると、温湿度を1回測定してJSONで出力します。
+
+```sh
+pnpm install
+pnpm --filter @os/sensor build
+pnpm sensor measure
+```
+
+出力例（温度は°C、湿度は相対湿度%）:
+
+```json
+{"temperature":26.5,"humidity":39.8}
+```
+
+読み取りに失敗した場合は、標準エラー出力に原因を表示して終了コード1を返します。
+
+### API
+
+```ts
+import type { TemperatureSensor } from "@os/api";
+import { loadTemperatureSensor } from "@os/sensor";
+
+const sensor: TemperatureSensor = await loadTemperatureSensor();
+const { temperature, humidity } = await sensor.measure();
+console.log(`温度: ${temperature} °C、湿度: ${humidity} %`);
+```
+
+`.env`は実行時のカレントディレクトリから読み込みます。
+GPIO番号でDHT11を探すため、`iio:device0`などのデバイス番号を設定する必要はありません。
+実行ユーザーには`/sys/bus/iio/devices`内の該当デバイスの読み取り権限が必要です。
+
+ドライバーは成功した測定値を2秒間保持します。定期測定は2秒以上の間隔を空けてください。
+DHT11は読み取りに失敗することがあり、その場合は`measure()`がrejectします。
+呼び出し側でエラーを処理し、次の測定まで2秒以上空けてください。
+
+ドライバー設定は[Raspberry PiのDHT11 overlay](https://github.com/raspberrypi/linux/blob/rpi-6.18.y/arch/arm/boot/dts/overlays/dht11-overlay.dts)、測定値の単位と保持期間は[LinuxのDHT11ドライバー](https://github.com/raspberrypi/linux/blob/rpi-6.18.y/drivers/iio/humidity/dht11.c)に基づいています。
+
 ## 赤外線送受信
 
 `@os/sensor` はRaspberry PiのLinux赤外線ドライバーを `ir-ctl` 経由で利用します。

@@ -11,7 +11,11 @@ const directory = await fs.mkdtemp(join(tmpdir(), "os-ir-hardware-"));
 const sysfs = join(directory, "class/lirc");
 const cwd = process.cwd();
 const platform = Object.getOwnPropertyDescriptor(process, "platform")!;
-const pins = { IR_RX_GPIO: process.env.IR_RX_GPIO, IR_TX_GPIO: process.env.IR_TX_GPIO };
+const pins = {
+  IR_RX_GPIO: process.env.IR_RX_GPIO,
+  IR_TX_GPIO: process.env.IR_TX_GPIO,
+  DHT_GPIO: process.env.DHT_GPIO,
+};
 process.chdir(directory);
 Object.defineProperty(process, "platform", { value: "linux" });
 after(async () => {
@@ -58,6 +62,7 @@ beforeEach(() => {
   children = [];
   delete process.env.IR_RX_GPIO;
   delete process.env.IR_TX_GPIO;
+  delete process.env.DHT_GPIO;
 });
 
 // Replace device discovery and ir-ctl; exercise real subprocess streams and termination.
@@ -204,15 +209,30 @@ test("propagate process failures and warnings without retrying; clean up failed 
   await assert.rejects(receive(), /failed to set receiving timeout/);
 });
 
-test("GPIO configuration loads .env, validates BCM pins and resolves sysfs regardless of lirc numbering", async (t) => {
-  assert.deepEqual(loadConfig(), { rx: 17, tx: 18 });
-  await fs.writeFile(".env", "IR_RX_GPIO=22\nIR_TX_GPIO=23\n");
+test(".envのGPIOを検証し、lirc番号に依存せずデバイスを特定する", async (t) => {
+  assert.deepEqual(loadConfig(), { rx: 17, tx: 18, dht: 4 });
+  await fs.writeFile(".env", "IR_RX_GPIO=22\nIR_TX_GPIO=23\nDHT_GPIO=24\n");
+  assert.deepEqual(loadConfig(), { rx: 22, tx: 23, dht: 24 });
   assert.match(bootConfig(), /gpio_pin=22\ndtoverlay=gpio-ir-tx,gpio_pin=23/);
   await fs.rm(".env");
+  delete process.env.IR_RX_GPIO;
   delete process.env.IR_TX_GPIO;
-  for (const value of ["", "17.5", "28", "18"]) {
-    process.env.IR_RX_GPIO = value;
-    assert.throws(() => loadConfig());
+  delete process.env.DHT_GPIO;
+  for (const key of ["IR_RX_GPIO", "IR_TX_GPIO", "DHT_GPIO"]) {
+    for (const value of ["", "17.5", "-1", "28", "abc"]) {
+      process.env[key] = value;
+      assert.throws(() => loadConfig());
+    }
+    delete process.env[key];
+  }
+  for (const [key, value] of [
+    ["IR_RX_GPIO", "18"],
+    ["DHT_GPIO", "17"],
+    ["DHT_GPIO", "18"],
+  ] as const) {
+    process.env[key] = value;
+    assert.throws(() => loadConfig(), /異なるGPIO/);
+    delete process.env[key];
   }
   assert.equal(await findDevice(17, "receive"), "/dev/lirc7");
   assert.equal(await findDevice(18, "send"), "/dev/lirc3");

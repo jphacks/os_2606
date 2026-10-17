@@ -14,6 +14,7 @@
     "test": "vitest run --passWithNoTests && pnpm test:ir",
     "test:watch": "vitest --passWithNoTests",
     "ir": "node packages/sensor/dist/cli.js",
+    "sensor": "node packages/sensor/dist/cli.js",
     "test:ir": "pnpm --filter @os/sensor test:ir"
   },
   "devDependencies": {
