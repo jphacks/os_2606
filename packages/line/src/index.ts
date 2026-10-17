@@ -1,7 +1,27 @@
 import { JSONParseError, LineBotClient, middleware, SignatureValidationFailed } from "@line/bot-sdk";
 import type { webhook } from "@line/bot-sdk";
+import type { LineApi } from "@os/api";
 import express from "express";
 import type { ErrorRequestHandler, Express } from "express";
+
+export function createLineApi(channelAccessToken: string, userId: string): LineApi {
+  if (!channelAccessToken.trim()) {
+    throw new Error("チャネルアクセストークンを指定してください。");
+  }
+  if (!userId.trim()) {
+    throw new Error("通知先のユーザーIDを指定してください。");
+  }
+
+  const client = LineBotClient.fromChannelAccessToken({ channelAccessToken });
+  return {
+    async sendNotificationFinishDrying(): Promise<void> {
+      await client.pushMessage({
+        to: userId,
+        messages: [{ type: "text", text: "洗濯物の乾燥が完了しました。" }],
+      });
+    },
+  };
+}
 
 export function createLineBot(channelSecret: string, channelAccessToken: string): Express {
   const app = express();
