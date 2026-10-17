@@ -16,3 +16,37 @@
 - `docs: APIの使用方法をREADMEに追加`
 - `test: 乾燥時間の予測処理に単体テストを追加`
 - `chore: TypeScriptの設定を更新`
+
+
+### Conditional Branching and Type Safety
+
+- Prefer `switch` statements over ternary operators for conditional branching.
+- Avoid nested ternary operators.
+- Use `switch` statements for branching based on discriminated unions, enums, or literal types.
+- Prefer explicit control flow to improve readability and TypeScript type narrowing.
+- Use exhaustive checks with the `never` type when handling discriminated unions.
+- Use `if` statements for simple boolean conditions where a `switch` statement would be unnecessary.
+- Prioritize readability and type safety over concise syntax.
+
+Example:
+
+```typescript
+type Status = "idle" | "loading" | "success" | "error";
+
+function getStatusMessage(status: Status): string {
+  switch (status) {
+    case "idle":
+      return "待機中";
+    case "loading":
+      return "読み込み中";
+    case "success":
+      return "成功";
+    case "error":
+      return "エラー";
+    default: {
+      const exhaustiveCheck: never = status;
+      return exhaustiveCheck;
+    }
+  }
+}
+```
