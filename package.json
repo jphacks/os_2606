@@ -1,0 +1,20 @@
+{
+  "name": "os_2606",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "preinstall": "npx only-allow pnpm",
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit",
+    "clean": "tsc -b --clean"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0"
+  },
+  "packageManager": "pnpm@10.26.2"
+}
