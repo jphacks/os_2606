@@ -7,7 +7,20 @@ export interface IrSignal {
 
 export interface LearnedRemote {
   version: 1;
-  protocol: "mitsubishi144" | "mitsubishi112";
+  protocol:
+    | "mitsubishi144"
+    | "mitsubishi112"
+    | "daikin280"
+    | "daikin2"
+    | "panasonic216"
+    | "mitsubishiHeavy152"
+    | "toshiba72"
+    | "toshiba80"
+    | "fujitsu128"
+    | "fujitsu120"
+    | "hitachi224"
+    | "hitachi424"
+    | "sharp104";
   state: number[];
 }
 

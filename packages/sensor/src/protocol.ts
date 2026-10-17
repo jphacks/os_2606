@@ -9,10 +9,28 @@ import {
 } from "./protocols/common.js";
 import type { Protocol } from "./protocols/common.js";
 import { mitsubishi112, mitsubishi144 } from "./protocols/mitsubishi.js";
+import { daikin280, daikin2 } from "./protocols/daikin.js";
+import { panasonic216 } from "./protocols/panasonic.js";
+import { mitsubishiHeavy152 } from "./protocols/mitsubishi-heavy.js";
+import { toshiba72, toshiba80 } from "./protocols/toshiba.js";
+import { fujitsu120, fujitsu128 } from "./protocols/fujitsu.js";
+import { hitachi224, hitachi424 } from "./protocols/hitachi.js";
+import { sharp104 } from "./protocols/sharp.js";
 
 const protocols: Record<LearnedRemote["protocol"], Protocol> = {
   mitsubishi144,
   mitsubishi112,
+  daikin280,
+  daikin2,
+  panasonic216,
+  mitsubishiHeavy152,
+  toshiba72,
+  toshiba80,
+  fujitsu120,
+  fujitsu128,
+  hitachi224,
+  hitachi424,
+  sharp104,
 };
 
 /** Validate and copy the state so encoding cannot mutate the caller's learned remote. */
