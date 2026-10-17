@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { loadEnvFile } from "node:process";
 import { validateInteger } from "./types.js";
 
-export function loadConfig(): { rx: number; tx: number } {
+export function loadEnvironment(): void {
   try {
     loadEnvFile();
   } catch (error) {
@@ -11,7 +11,10 @@ export function loadConfig(): { rx: number; tx: number } {
       throw error;
     }
   }
+}
 
+export function loadConfig(): { rx: number; tx: number } {
+  loadEnvironment();
   const env = process.env;
   for (const key of ["IR_RX_GPIO", "IR_TX_GPIO"]) {
     if (env[key] !== undefined && !/^\d+$/.test(env[key]!)) {

@@ -1,1 +1,1 @@
-export {};
+export { loadTemperatureSensor } from "./temperature.js";
