@@ -29,7 +29,9 @@ function addSensor(name: string, gpio: number): string {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.stubEnv("DHT_GPIO", undefined);
+  for (const key of ["IR_RX_GPIO", "IR_TX_GPIO", "DHT_GPIO"]) {
+    vi.stubEnv(key, undefined);
+  }
   files.clear();
   io.readdir.mockResolvedValue(["iio:device7"]);
   addSensor("iio:device7", 4);
@@ -71,8 +73,8 @@ test(".envがない場合はGPIO4を使用する", async () => {
   });
 });
 
-test("不正なGPIOではデバイスを読み取らない", async () => {
-  for (const gpio of ["", "17.5", "-1", "28", "abc"]) {
+test("不正なGPIOや赤外線と重複したGPIOではデバイスを読み取らない", async () => {
+  for (const gpio of ["", "17.5", "-1", "28", "abc", "17", "18"]) {
     vi.stubEnv("DHT_GPIO", gpio);
     await expect(loadTemperatureSensor()).rejects.toThrow(/DHT_GPIO/);
   }

@@ -1,20 +1,14 @@
 import type { TemperatureSensor } from "@os/api";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { loadEnvironment } from "./config.js";
-import { validateInteger } from "./types.js";
+import { loadConfig } from "./config.js";
 
 const deviceDirectory = "/sys/bus/iio/devices";
 
 /** DHT_GPIOに接続したDHT11をLinuxのIIOドライバーから読み取る。 */
 export async function loadTemperatureSensor(): Promise<TemperatureSensor> {
-  loadEnvironment();
-  const gpioValue = process.env.DHT_GPIO ?? "4";
-  if (!/^\d+$/.test(gpioValue)) {
-    throw new Error("DHT_GPIOにはBCM GPIO番号を指定してください。");
-  }
-  const gpio = validateInteger(Number(gpioValue), 0, 27, "DHT_GPIO");
-  const devicePath = await findSensor(gpio);
+  const { dht } = loadConfig();
+  const devicePath = await findSensor(dht);
 
   return {
     async measure() {
