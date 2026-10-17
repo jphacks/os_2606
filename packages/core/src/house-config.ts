@@ -1,10 +1,13 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { HouseConfig } from "./house-config/types/house-config.js";
-
-const DEFAULT_CONFIG: HouseConfig = { region: null };
+import type { HouseConfig, LaundryPosition } from "./house-config/types/house-config.js";
 
 export const HOUSE_CONFIG_PATH = process.env.HOUSE_CONFIG_PATH ?? "data/house_config.json";
+
+const DEFAULT_CONFIG: HouseConfig = { region: null, laundryPositionFromAC: "center" };
+
+const isLaundryPosition = (value: unknown): value is LaundryPosition =>
+  value === "left" || value === "center" || value === "right";
 
 // 家の設定を読み取る
 // ファイルが無ければデフォルト値を返し、中身が不正ならエラーにする
@@ -19,6 +22,7 @@ export async function getHouseConfig(path = HOUSE_CONFIG_PATH): Promise<HouseCon
   return parseHouseConfig(JSON.parse(text), path);
 }
 
+// JSONをパースしてHouseConfig型に変換する
 function parseHouseConfig(json: unknown, path: string): HouseConfig {
   if (typeof json !== "object" || json === null || Array.isArray(json)) {
     throw new Error(`${path}: house config must be a JSON object`);
@@ -27,7 +31,12 @@ function parseHouseConfig(json: unknown, path: string): HouseConfig {
   if (region !== null && typeof region !== "string") {
     throw new Error(`${path}: region must be a string or null`);
   }
-  return { region };
+  const laundryPositionFromAC =
+    "laundryPositionFromAC" in json ? json.laundryPositionFromAC : DEFAULT_CONFIG.laundryPositionFromAC;
+  if (!isLaundryPosition(laundryPositionFromAC)) {
+    throw new Error(`${path}: laundryPositionFromAC must be "left", "center" or "right"`);
+  }
+  return { region, laundryPositionFromAC };
 }
 
 // 家の設定を更新する
