@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -41,6 +41,27 @@ test("learn, persist, reload and serialize send/off; failed sends do not block l
   });
   const { learnRemote, loadRemoteControl } = await import("../dist/index.js");
   const { saveSignal } = await import("../dist/remote.js");
+  await t.test("missing file uses Mitsubishi 144 without receiving, and retains successful settings", async () => {
+    const remote = await loadRemoteControl();
+    assert.equal(sent.length, 0);
+    await remote.stop();
+    const stopped = identify(sent.at(-1)!);
+    assert.equal(stopped.protocol, "mitsubishi144");
+    assert.equal(stopped.state[5]! & 0x20, 0);
+    await remote.send({ acMode: "dehumidify", temperature: 24, fanSpeed: "high" });
+    const reloaded = await loadRemoteControl();
+    await reloaded.send({ acMode: "cool", temperature: 26 });
+    const cooled = identify(sent.at(-1)!);
+    assert.equal(cooled.protocol, "mitsubishi144");
+    assert.equal(cooled.state[5]! & 0x20, 0x20);
+    assert.equal(cooled.state[6]! & 0x38, 0x18);
+    assert.equal(cooled.state[7]! & 0x1f, 10);
+    assert.equal(cooled.state[9]! & 0x87, 3);
+    await writeFile(file, "broken JSON");
+    await assert.rejects(loadRemoteControl(), SyntaxError);
+    await rm(file);
+    sent.length = 0;
+  });
   const learned = await learnRemote();
   assert.equal(learned.protocol, "mitsubishi112");
   assert.deepEqual(JSON.parse(await readFile(file, "utf8")).state, capture112State);

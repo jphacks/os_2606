@@ -8,6 +8,27 @@ import type { IrSignal, LearnedRemote } from "./types.js";
 
 const remotePath = (): string => process.env.IR_REMOTE_PATH ?? "data/ir/remote.json";
 
+async function loadSavedRemote(remoteFile: string): Promise<LearnedRemote> {
+  let savedData: string;
+  try {
+    savedData = await readFile(remoteFile, "utf8");
+  } catch (error) {
+    if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
+      throw error;
+    }
+    // Mitsubishi Electric 144-bit: off, 26°C, auto fan/vertical vane, horizontal center, no timers.
+    return validateRemote({
+      version: 1,
+      protocol: "mitsubishi144",
+      state: [
+        0x23, 0xcb, 0x26, 0x01, 0x00, 0x00, 0x18, 0x0a, 0x36,
+        0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2d,
+      ],
+    });
+  }
+  return validateRemote(JSON.parse(savedData));
+}
+
 /** Only replace the previous learned remote after decoding and validation succeed. */
 export async function saveSignal(signal: IrSignal): Promise<LearnedRemote> {
   return saveRemote(identify(signal));
@@ -38,8 +59,7 @@ export async function learnRemote(abortSignal?: AbortSignal): Promise<LearnedRem
 
 export async function loadRemoteControl(): Promise<RemoteControl> {
   const remoteFile = remotePath();
-  const savedData = await readFile(remoteFile, "utf8");
-  let learnedRemote = validateRemote(JSON.parse(savedData));
+  let learnedRemote = await loadSavedRemote(remoteFile);
   let sendQueue = Promise.resolve();
 
   const enqueueSend = async (message?: AcMessage): Promise<void> => {
