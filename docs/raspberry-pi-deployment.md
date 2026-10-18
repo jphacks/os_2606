@@ -84,9 +84,10 @@ sudoの許可は、このサービスの停止・再起動だけです。
 **管理用PCからのSSH許可も残してください。** Piをタグ付きにすると`autogroup:self`には一致しません。
 ユーザー所有のPCはログインIDを`src`に指定します。接続元が`tag:client`付きのMacなら、例えば既存の`ssh`配列へ次を追加します。
 このルールは`tag:client`の全端末に適用されます。ネットワーク側でも管理端末からPiの`tcp:22`への接続を許可してください。
+`<PI_SSH_USER>`は、Piに存在する管理用のLinuxユーザー名に置き換えてください。
 
 ```json
-{ "action": "accept", "src": ["tag:client"], "dst": ["tag:os2606-pi"], "users": ["yuto"] }
+{ "action": "accept", "src": ["tag:client"], "dst": ["tag:os2606-pi"], "users": ["<PI_SSH_USER>"] }
 ```
 
 設定後、Piで実行します。Tailscale IP宛ての22番ポートがTailscale SSHへ切り替わるため、初回はLAN側SSHかPi本体から行ってください。
