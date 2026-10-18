@@ -45,9 +45,9 @@ beforeEach(() => {
   hardware.remote.supports.mockReturnValue(true);
 });
 
-test("学習データの読み込みに失敗したら仮実装で起動せず、エラーを返す", async () => {
-  hardware.loadRemote.mockImplementationOnce(() => { throw new Error("remote file missing"); });
-  await expect(createApplication(readApplicationConfig(env))).rejects.toThrow("remote file missing");
+test("リモコンの初期化に失敗したら仮実装で起動せず、エラーを返す", async () => {
+  hardware.loadRemote.mockImplementationOnce(() => { throw new Error("remote state invalid"); });
+  await expect(createApplication(readApplicationConfig(env))).rejects.toThrow("remote state invalid");
   expect(hardware.remote.send).not.toHaveBeenCalled();
 });
 

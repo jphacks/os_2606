@@ -72,7 +72,8 @@ rejectした場合は呼び出し側でエラーを処理し、次の測定ま�
 
 `@os/sensor` はRaspberry PiのLinux赤外線ドライバーを `ir-ctl` 経由で利用します。
 自作コードはTypeScriptで、送受信時に `ir-ctl` をサブプロセスとして起動します。
-通信方式は学習した信号から判別します。メーカー名・型番を指定する設定はありません。
+初期状態は三菱電機のMITSUBISHI_AC（144 bit）方式で、リモコン学習なしで操作できます。
+別方式を使う場合は、任意でリモコンを学習すると通信方式を切り替えられます。
 以下の方式に対応しています。同じメーカーでも、表にない方式は未対応です。
 
 | メーカー | 対応方式 | 温度 | 固定風向の指定 |
@@ -110,19 +111,20 @@ pnpm ir boot-config
 アプリはGPIO番号から `/dev/lirc*` を選ぶため、デバイス番号の入れ替わりには依存しません。
 実行ユーザーには送受信両方のデバイスの読み書き権限が必要です。
 
-### 学習と操作
+### 操作（初回の学習は不要）
 
 ```sh
-pnpm ir learn
-# 15秒以内に、ON表示の純正リモコンを受信機に向けて温度ボタンを1回押す
-
 pnpm ir send '{"acMode":"cool","temperature":26}'
 pnpm ir send '{"acMode":"dehumidify","temperature":24}'
 pnpm ir send '{"acMode":"cool","temperature":26,"fanSpeed":"high"}'
 pnpm ir stop
 ```
 
-学習時に信号の方式とチェックサムを確認し、`data/ir/remote.json` に保存します。
+保存ファイルがない場合は三菱電機144bit方式（初期値26℃、風量・上下風向は自動、左右風向は中央、タイマーなし）を使います。
+保存済みファイルが壊れている場合や読み取り権限がない場合はエラーになります。
+
+別方式を使う場合だけ `pnpm ir learn` を実行し、15秒以内にON表示の純正リモコンを受信機に向けて温度ボタンを1回押してください。
+学習時は信号の方式とチェックサムを確認して、`data/ir/remote.json` に保存します。
 `IR_REMOTE_PATH` で保存先を変更できます（未指定なら `data/ir/remote.json`）。相対パスは実行ディレクトリ基準です。
 次回起動時はこのファイルを読み込みます。送信に成功した設定も同じファイルへ保存します。
 再学習に成功すると保存内容を置き換えます。未対応・壊れた信号は保存しません。
@@ -132,7 +134,7 @@ pnpm ir stop
 import { learnRemote, loadRemoteControl } from "@os/sensor";
 import type { AcMessage, RemoteControl } from "@os/api";
 
-await learnRemote(); // 初回のみ。対応するリモコンの信号を受信して保存
+// 別方式を使う場合だけ: await learnRemote();
 const remote: RemoteControl = await loadRemoteControl();
 const message: AcMessage = {
   acMode: "heat",
