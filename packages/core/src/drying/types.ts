@@ -13,8 +13,8 @@ export interface DryingContext {
   outdoorHumidity: number;
   presenceMode: PresenceMode;
   comfortTemperature?: number;
-  /** 観測から積算した未校正の推定進捗。0〜1。 */
-  dryingProgress: number;
+  /** 観測から積算した未校正の推定進捗。0〜1。開始時は省略でき、0として扱う。 */
+  dryingProgress?: number;
 }
 
 /** 運転時は設定温度（℃）と風量を返す。停止時は両方とも省略する。 */

@@ -10,6 +10,27 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
+test("洗濯開始時は進捗や観測履歴なしで運転設定と推定残り時間を取得できる", () => {
+  const context = deepFreeze<DryingContext>({
+    indoorTemperature: 24,
+    indoorHumidity: 70,
+    outdoorTemperature: 18,
+    outdoorHumidity: 60,
+    presenceMode: "home",
+  });
+
+  const plan = decideNextOperation(context);
+
+  expect(plan).toEqual(decideNextOperation({ ...context, dryingProgress: 0 }));
+  expect(plan.mode).not.toBe("off");
+  expect(plan.temperature).toBeGreaterThanOrEqual(16);
+  expect(plan.temperature).toBeLessThanOrEqual(28);
+  expect(["low", "medium", "high"]).toContain(plan.fanSpeed);
+  expect(plan.estimatedDryingHours).toBeGreaterThan(0);
+  expect(Number.isFinite(plan.estimatedDryingHours)).toBe(true);
+  expect(context).not.toHaveProperty("dryingProgress");
+});
+
 test("公開 API は入力と設定を変更せず、同じ入力から同じ運転計画を返す", () => {
   const context = deepFreeze<DryingContext>({
     indoorTemperature: 24,

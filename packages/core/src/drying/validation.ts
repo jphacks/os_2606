@@ -20,7 +20,9 @@ export function validateEnvironment(temperature: number, humidity: number): void
 export function validateContext(context: DryingContext): void {
   validateEnvironment(context.indoorTemperature, context.indoorHumidity);
   validateEnvironment(context.outdoorTemperature, context.outdoorHumidity);
-  assertRange(context.dryingProgress, 0, 1, "dryingProgress");
+  if (context.dryingProgress !== undefined) {
+    assertRange(context.dryingProgress, 0, 1, "dryingProgress");
+  }
   if (context.comfortTemperature !== undefined) {
     assertRange(context.comfortTemperature, MIN_SETPOINT, MAX_SETPOINT, "comfortTemperature");
   }

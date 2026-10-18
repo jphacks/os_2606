@@ -6,7 +6,13 @@
 センサー取得・時刻取得・ファイル読み書き・実機操作は呼び出し側で行います。
 
 公開 API の定義は `src/drying/index.ts`、計画の実装は `src/drying/operation-planner.ts` です。
-`@os/core` からの既存の import も引き続き使えます。
+運転計画の関数・型は `@os/core/drying` から import してください。
+`decideNextOperation` は `@os/core` からも名前付きで公開しています。
+
+## 開始時に1回だけ使う
+
+最初の実装では、洗濯開始時に1回呼ぶだけで運転設定と推定残り乾燥時間を取得できます。
+`dryingProgress` は省略すると `0` として扱うため、観測履歴や進捗の保存は不要です。
 
 ```typescript
 import { decideNextOperation } from "@os/core/drying";
@@ -18,13 +24,17 @@ const plan = decideNextOperation({
   outdoorHumidity: 60,
   presenceMode: "home",
   comfortTemperature: 24,
-  dryingProgress: 0,
 });
 
 // plan.mode: "cool" | "heat" | "dehumidify" | "off"
 // plan.temperature / plan.fanSpeed: 運転時の設定。停止時は省略。
 // plan.estimatedDryingHours: 乾くまでの推定残り時間（時間）。
 ```
+
+呼び出し側で返された設定を実機へ送り、残り時間を表示します。
+この関数自体は実機への送信、タイマーによる停止、定期再評価を行いません。
+1回だけ呼ぶ場合、残り時間は開始時点の予測であり、その後の環境変化には追従しません。
+定期再評価を追加するときは、観測から更新した `dryingProgress` を渡せます。
 
 返すのは次の区間の計画1件です。複数時間にわたる運転スケジュールではありません。
 `estimatedDryingHours` は、選んだ運転による予測区間終了時の温湿度が続くと仮定し、
@@ -99,7 +109,7 @@ const decision = decideNextOperation(context, config);
 
 ## 観測進捗
 
-観測進捗の更新に使う `updateObservedProgress` と `EnvironmentObservation` は、
+観測進捗の更新に使う `updateObservedProgress` は、
 既存の利用のため `@os/core` から公開しています（`@os/core/drying` には含めません）。
 `updateObservedProgress` は時刻付きの前回・今回の実測VPDを台形積分します。
 運転計画の推定残り時間から、保存済みの観測進捗を更新することはありません。

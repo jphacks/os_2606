@@ -22,6 +22,7 @@ export function referenceTemperature(context: DryingContext, config: DryingConfi
  * 風量は空調応答への暫定倍率であり、衣類への直接送風の実測効果ではない。
  */
 export function simulateEnvironment(context: DryingContext, operation: Operation, config: DryingConfig = DEFAULT_DRYING_CONFIG): SimulationResult {
+  const { dryingProgress = 0 } = context;
   validateContext(context);
   validateConfig(config);
   validateOperation(operation, context, config);
@@ -66,7 +67,7 @@ export function simulateEnvironment(context: DryingContext, operation: Operation
     penalty += (startError + (temperature - reference) ** 2) / 2 * hours;
   }
   return {
-    estimatedProgressGain: Math.min(1 - context.dryingProgress, progress),
+    estimatedProgressGain: Math.min(1 - dryingProgress, progress),
     predictedTemperature: temperature,
     predictedHumidity: relativeHumidity(temperature, pressure),
     temperaturePenalty: penalty / (config.evaluationMinutes / MINUTES_PER_HOUR),
