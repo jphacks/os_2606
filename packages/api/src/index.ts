@@ -1,6 +1,8 @@
 export interface AcMessage {
-  acMode: "cool" | "heat";
+  acMode: "cool" | "heat" | "dry";
   temperature: number;
+  /** Omit to retain the existing setting. */
+  fanSpeed?: "low" | "medium" | "high";
   /** Omit to retain the last learned/sent setting. Unsupported positions reject. */
   windDirectionVertical?: "up" | "middle" | "down";
   windDirectionHorizontal?: "left" | "center" | "right";
@@ -46,3 +48,5 @@ export interface LineApi {
   /** 乾燥の完了を通知する。 */
   sendNotificationFinishDrying(): Promise<void>;
 }
+
+export * from "./drying-cycle.js";
