@@ -107,6 +107,25 @@ test("learn, persist, reload and serialize send/off; failed sends do not block l
     assert.equal(cooled.state[6]! & 0x70, 0x70);
     assert.equal(cooled.sharpModel, "a705");
   });
+  const previousPath = process.env.IR_REMOTE_PATH;
+  try {
+    const customFile = join(directory, "custom/remote.json");
+    process.env.IR_REMOTE_PATH = customFile;
+    await saveSignal(capture112);
+    const customRemote = await loadRemoteControl();
+    const before = sent.length;
+    const stored = await readFile(customFile, "utf8");
+    assert.equal(customRemote.supports({ acMode: "dehumidify", temperature: 24, fanSpeed: "low" }), true);
+    assert.equal(customRemote.supports({ acMode: "cool", temperature: 24.25, fanSpeed: "high" }), false);
+    assert.equal(sent.length, before); // Capability checks must not send or persist anything.
+    assert.equal(await readFile(customFile, "utf8"), stored);
+    process.env.IR_REMOTE_PATH = join(directory, "different/remote.json");
+    await customRemote.send({ acMode: "heat", temperature: 22, fanSpeed: "high" });
+    assert.equal(JSON.parse(await readFile(customFile, "utf8")).state[8] & 7, 0);
+  } finally {
+    if (previousPath === undefined) delete process.env.IR_REMOTE_PATH;
+    else process.env.IR_REMOTE_PATH = previousPath;
+  }
 });
 
 const flipper = `Filetype: IR signals file
