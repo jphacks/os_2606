@@ -123,7 +123,7 @@ test.each([false, true])("Webhookから送信・停止・通知まで実行す�
     }
     expect(reply).toHaveBeenCalledOnce();
     expect(broadcast).toHaveBeenCalledExactlyOnceWith({
-      messages: [{ type: "text", text: `エアコンの設定温度を${expected.temperature}℃にしました。` }],
+      messages: [{ type: "text", text: `エアコンを${{ cool: "冷房", heat: "暖房", dehumidify: "除湿" }[expected.mode]}・設定温度${expected.temperature}℃にしました。` }],
     });
     expect((await send("洗濯したよ", "someone-else")).status).toBe(200);
     expect(reply).toHaveBeenCalledTimes(2);

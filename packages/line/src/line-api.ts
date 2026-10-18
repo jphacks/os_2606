@@ -8,9 +8,25 @@ export function createLineApi(channelAccessToken: string): LineApi {
 
   const client = LineBotClient.fromChannelAccessToken({ channelAccessToken });
   return {
-    async sendNotificationTemperatureChanged(temperature): Promise<void> {
+    async sendNotificationTemperatureChanged(temperature, acMode): Promise<void> {
+      let modeName: string;
+      switch (acMode) {
+        case "cool":
+          modeName = "冷房";
+          break;
+        case "heat":
+          modeName = "暖房";
+          break;
+        case "dehumidify":
+          modeName = "除湿";
+          break;
+        default: {
+          const exhaustiveCheck: never = acMode;
+          return exhaustiveCheck;
+        }
+      }
       await client.broadcast({
-        messages: [{ type: "text", text: `エアコンの設定温度を${temperature}℃にしました。` }],
+        messages: [{ type: "text", text: `エアコンを${modeName}・設定温度${temperature}℃にしました。` }],
       });
     },
     async sendNotificationFinishDrying(): Promise<void> {

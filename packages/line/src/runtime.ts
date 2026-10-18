@@ -1,4 +1,4 @@
-import type { CoreApi, TemperatureSensor } from "@os/api";
+import type { AcMessage, CoreApi, TemperatureSensor } from "@os/api";
 import { createCycle, getHouseConfig, updateHouseConfig } from "@os/core";
 import type { CycleDependencies, CycleOptions } from "@os/core";
 
@@ -9,21 +9,23 @@ export function createRuntime(
     outdoorTemperature: number;
     outdoorHumidity: number;
     comfortTemperature: number;
-    onTemperatureChanged?(temperature: number): Promise<void>;
+    onTemperatureChanged?(temperature: number, acMode: AcMessage["acMode"]): Promise<void>;
   },
   dependencies: Partial<CycleDependencies> = {},
 ): { core: CoreApi; dispose(): Promise<void> } {
   let lastTemperature: number | undefined;
+  let lastMode: AcMessage["acMode"] | undefined;
   const cycle = createCycle({
     ...options,
     remoteControl: {
       stop: () => options.remoteControl.stop(),
       async send(message) {
         await options.remoteControl.send(message);
-        if (lastTemperature === message.temperature) return;
+        if (lastTemperature === message.temperature && lastMode === message.acMode) return;
         lastTemperature = message.temperature;
+        lastMode = message.acMode;
         try {
-          await options.onTemperatureChanged?.(message.temperature);
+          await options.onTemperatureChanged?.(message.temperature, message.acMode);
         } catch (error) {
           // 通知の失敗で、送信済みの操作や乾燥計画を失敗扱いにしない。
           options.onError(error);

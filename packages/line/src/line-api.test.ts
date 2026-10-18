@@ -24,10 +24,12 @@ test("ユーザーIDの指定なしで友だち全員に乾燥完了を一斉配
   expect(pushMessage).not.toHaveBeenCalled();
 });
 
-test("設定温度を友だち全員に通知する", async () => {
-  await createLineApi("test-token").sendNotificationTemperatureChanged(26.5);
+test.each([
+  ["cool", "冷房"], ["heat", "暖房"], ["dehumidify", "除湿"],
+] as const)("設定温度と運転モード%sを友だち全員に通知する", async (mode, label) => {
+  await createLineApi("test-token").sendNotificationTemperatureChanged(26.5, mode);
   expect(broadcast).toHaveBeenCalledExactlyOnceWith({
-    messages: [{ type: "text", text: "エアコンの設定温度を26.5℃にしました。" }],
+    messages: [{ type: "text", text: `エアコンを${label}・設定温度26.5℃にしました。` }],
   });
 });
 

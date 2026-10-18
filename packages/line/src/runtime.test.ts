@@ -2,12 +2,14 @@ import { expect, test, vi } from "vitest";
 import { handlePostback, handleText } from "./command.js";
 import { POSTBACK_DATA } from "./postback-data.js";
 import { createRuntime } from "./runtime.js";
+import type { AcMessage } from "@os/api";
 import type { CycleDependencies } from "@os/core";
 
 test("設定温度は送信成功後に通知し、同じ温度や送信失敗では通知しない", async () => {
   let temperature = 26;
+  let mode: AcMessage["acMode"] = "heat";
   const remoteControl = { send: vi.fn(async () => {}), stop: vi.fn(async () => {}) };
-  const onTemperatureChanged = vi.fn(async (_temperature: number) => {});
+  const onTemperatureChanged = vi.fn(async (_temperature: number, _mode: AcMessage["acMode"]) => {});
   const onError = vi.fn();
   const runtime = createRuntime({
     sensor: { measure: async () => ({ temperature: 24, humidity: 70 }) },
@@ -15,7 +17,7 @@ test("設定温度は送信成功後に通知し、同じ温度や送信失敗�
     outdoorTemperature: 18, outdoorHumidity: 60, comfortTemperature: 24,
   }, {
     now: () => 0,
-    decideNextOperation: () => ({ mode: "heat", temperature, fanSpeed: "high", estimatedDryingHours: 1 }),
+    decideNextOperation: () => ({ mode, temperature, fanSpeed: "high", estimatedDryingHours: 1 }),
     createTask: () => ({ start() {}, stop() {}, destroy() {} }),
   });
   try {
@@ -23,14 +25,21 @@ test("設定温度は送信成功後に通知し、同じ温度や送信失敗�
     await expect(runtime.core.startDrying()).rejects.toThrow("IR failed");
     expect(onTemperatureChanged).not.toHaveBeenCalled();
     await runtime.core.startDrying();
-    expect(onTemperatureChanged).toHaveBeenCalledExactlyOnceWith(26);
+    expect(onTemperatureChanged).toHaveBeenCalledExactlyOnceWith(26, "heat");
     expect(onTemperatureChanged.mock.invocationCallOrder[0]).toBeGreaterThan(remoteControl.send.mock.invocationCallOrder[1]!);
     await runtime.core.leaveHouse();
     expect(onTemperatureChanged).toHaveBeenCalledOnce();
     temperature = 24;
     await runtime.core.arriveHouse();
-    expect(onTemperatureChanged).toHaveBeenLastCalledWith(24);
+    expect(onTemperatureChanged).toHaveBeenLastCalledWith(24, "heat");
     expect(onTemperatureChanged).toHaveBeenCalledTimes(2);
+
+    mode = "cool";
+    await runtime.core.leaveHouse();
+    expect(onTemperatureChanged).toHaveBeenLastCalledWith(24, "cool");
+    expect(onTemperatureChanged).toHaveBeenCalledTimes(3);
+    await runtime.core.arriveHouse();
+    expect(onTemperatureChanged).toHaveBeenCalledTimes(3);
 
     const error = new Error("LINE failed");
     onTemperatureChanged.mockRejectedValueOnce(error);

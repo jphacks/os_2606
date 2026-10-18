@@ -77,7 +77,7 @@ export async function createApplication(config: ApplicationConfig) {
       },
     },
     onFinishDrying: () => line.sendNotificationFinishDrying(),
-    onTemperatureChanged: (temperature) => line.sendNotificationTemperatureChanged(temperature),
+    onTemperatureChanged: (temperature, acMode) => line.sendNotificationTemperatureChanged(temperature, acMode),
     onError: (error) => console.error("乾燥制御または通知に失敗しました。", error),
   });
   try {
