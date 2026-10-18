@@ -1,9 +1,12 @@
 import type { TemperatureSensor } from "@os/api";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { loadConfig } from "./config.js";
 
 const deviceDirectory = "/sys/bus/iio/devices";
+const maxMeasurementAttempts = 3;
+const retryDelayMs = 2000;
 
 /** DHT_GPIOに接続したDHT11をLinuxのIIOドライバーから読み取る。 */
 export async function loadTemperatureSensor(): Promise<TemperatureSensor> {
@@ -12,13 +15,30 @@ export async function loadTemperatureSensor(): Promise<TemperatureSensor> {
 
   return {
     async measure() {
-      // ドライバーが温湿度を一緒に測定し、成功した値を2秒間保持する。
-      const temperature = await readMeasurement(devicePath, "in_temp_input");
-      const humidity = await readMeasurement(devicePath, "in_humidityrelative_input");
-      if (humidity < 0 || humidity > 100) {
-        throw new Error("DHT11の相対湿度が0〜100%の範囲外です。");
+      for (let attempt = 1; ; attempt++) {
+        try {
+          // ドライバーが温湿度を一緒に測定し、成功した値を2秒間保持する。
+          const temperature = await readMeasurement(devicePath, "in_temp_input");
+          const humidity = await readMeasurement(devicePath, "in_humidityrelative_input");
+          if (humidity < 0 || humidity > 100) {
+            throw new Error("DHT11の相対湿度が0〜100%の範囲外です。");
+          }
+          return { temperature, humidity };
+        } catch (error) {
+          if (attempt >= maxMeasurementAttempts) {
+            throw error;
+          }
+          switch ((error as NodeJS.ErrnoException)?.code) {
+            case "EIO":
+            case "EAGAIN":
+            case "ETIMEDOUT":
+              await delay(retryDelayMs);
+              break;
+            default:
+              throw error;
+          }
+        }
       }
-      return { temperature, humidity };
     },
   };
 }
