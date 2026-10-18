@@ -1,5 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { DEFAULT_DRYING_CONFIG } from "../drying/config.js";
+import { MAX_SETPOINT, MIN_SETPOINT } from "../drying/validation.js";
 import type { LaundryPosition } from "../types/laundry.js";
 import type {
   GetHouseConfig,
@@ -12,10 +14,18 @@ import type {
 // テストなどで切り替えられるよう、呼び出しのたびに読む
 const houseConfigPath = (): string => process.env.HOUSE_CONFIG_PATH ?? "data/house_config.json";
 
-const DEFAULT_CONFIG: HouseConfig = { region: null, laundryPositionFromAC: "center" };
+const DEFAULT_CONFIG: HouseConfig = {
+  region: null,
+  laundryPositionFromAC: "center",
+  userComfortTemperature: DEFAULT_DRYING_CONFIG.defaultComfortTemperature,
+};
 
 const isLaundryPosition = (value: unknown): value is LaundryPosition =>
   value === "left" || value === "center" || value === "right";
+
+// 快適温度はエアコンの設定温度として使うため、乾燥制御と同じ範囲に制限する
+const isUserComfortTemperature = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value) && value >= MIN_SETPOINT && value <= MAX_SETPOINT;
 
 // 家の設定を読み取る
 // ファイルが無ければデフォルト値を返し、中身が不正ならエラーにする
@@ -45,7 +55,12 @@ function parseHouseConfig(json: unknown, path: string): HouseConfig {
   if (!isLaundryPosition(laundryPositionFromAC)) {
     throw new Error(`${path}: laundryPositionFromAC must be "left", "center" or "right"`);
   }
-  return { region, laundryPositionFromAC };
+  const userComfortTemperature =
+    "userComfortTemperature" in json ? json.userComfortTemperature : DEFAULT_CONFIG.userComfortTemperature;
+  if (!isUserComfortTemperature(userComfortTemperature)) {
+    throw new Error(`${path}: userComfortTemperature must be a number between ${MIN_SETPOINT} and ${MAX_SETPOINT}`);
+  }
+  return { region, laundryPositionFromAC, userComfortTemperature };
 }
 
 // 家の設定を更新する
