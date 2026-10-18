@@ -1,4 +1,4 @@
-import { getHouseConfig } from "./house-config.js";
+import type { LaundryPosition } from "./types/laundry.js";
 import type { WindDirectionHorizontal, WindDirectionVertical } from "./types/ac-wind-direction.js";
 import type { AcMode } from "./types/example.js";
 
@@ -16,7 +16,13 @@ export const decideWindDirectionVertical = (acMode: AcMode): WindDirectionVertic
 
 // 水平方向の風向きを決定する関数
 // 家の設定値より、エアコンと洗濯物の位置関係を用いて、洗濯物のある方向へ風を送る
-export const decideWindDirectionHorizontal = async (): Promise<WindDirectionHorizontal> => {
-  const { laundryPositionFromAC } = await getHouseConfig();
-  return laundryPositionFromAC;
+export const decideWindDirectionHorizontal = (laundryPositionFromAC: LaundryPosition): WindDirectionHorizontal => {
+  switch (laundryPositionFromAC) {
+    case "left":
+      return "left";
+    case "center":
+      return "center";
+    case "right":
+      return "right";
+  }
 };

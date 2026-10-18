@@ -1,3 +1,3 @@
-export * from "./house-config.js";
-export type { HouseConfig, LaundryPosition } from "./house-config/types/house-config.js";
+export * from "./house-config/index.js";
+export type { LaundryPosition } from "./types/laundry.js";
 export * from "./drying/index.js";
