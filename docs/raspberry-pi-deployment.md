@@ -73,7 +73,6 @@ GPIOとポートは変更する場合だけ編集してください。省略時�
 ```dotenv
 LINE_CHANNEL_SECRET=LINEのチャネルシークレット
 LINE_CHANNEL_ACCESS_TOKEN=LINEのチャネルアクセストークン
-LINE_USER_ID=操作するLINEユーザーのID
 # 以下の外気温湿度は例です。設置場所の値に置き換えてください。
 OUTDOOR_TEMPERATURE=18
 OUTDOOR_HUMIDITY=60

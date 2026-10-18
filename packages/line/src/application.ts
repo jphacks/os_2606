@@ -8,7 +8,6 @@ import { createRuntime } from "./runtime.js";
 export interface ApplicationConfig {
   channelSecret: string;
   channelAccessToken: string;
-  userId: string;
   outdoorTemperature: number;
   outdoorHumidity: number;
   comfortTemperature: number;
@@ -36,7 +35,6 @@ export function readApplicationConfig(env: NodeJS.ProcessEnv): ApplicationConfig
   const config = {
     channelSecret: required("LINE_CHANNEL_SECRET"),
     channelAccessToken: required("LINE_CHANNEL_ACCESS_TOKEN"),
-    userId: required("LINE_USER_ID"),
     outdoorTemperature: number("OUTDOOR_TEMPERATURE", -60, 60),
     outdoorHumidity: number("OUTDOOR_HUMIDITY", 0, 100),
     comfortTemperature: number("COMFORT_TEMPERATURE", 16, 28, 24),
@@ -54,7 +52,7 @@ export async function createApplication(config: ApplicationConfig) {
   ]);
   // デバイスの存在だけでなく、属性の読み取り・実測に成功してから公開する。
   await sensor.measure();
-  const line = createLineApi(config.channelAccessToken, config.userId);
+  const line = createLineApi(config.channelAccessToken);
   const runtime = createRuntime({
     remoteControl,
     sensor,
@@ -83,7 +81,7 @@ export async function createApplication(config: ApplicationConfig) {
   });
   try {
     return {
-      app: createLineBot(config.channelSecret, config.channelAccessToken, runtime.core, config.userId),
+      app: createLineBot(config.channelSecret, config.channelAccessToken, runtime.core),
       dispose: runtime.dispose,
     };
   } catch (error) {

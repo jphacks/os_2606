@@ -2,59 +2,38 @@ import { LineBotClient } from "@line/bot-sdk";
 import { afterAll, beforeEach, expect, test, vi } from "vitest";
 import { createLineApi } from "./line-api.js";
 
-const replyMessage = vi.spyOn(LineBotClient.prototype, "replyMessage");
+const broadcast = vi.spyOn(LineBotClient.prototype, "broadcast");
 const pushMessage = vi.spyOn(LineBotClient.prototype, "pushMessage");
 
 beforeEach(() => {
-  replyMessage.mockReset().mockResolvedValue({ sentMessages: [] });
-  pushMessage.mockReset().mockResolvedValue({ sentMessages: [] });
+  broadcast.mockReset().mockResolvedValue({});
+  pushMessage.mockReset();
 });
 
 afterAll(() => {
-  replyMessage.mockRestore();
+  broadcast.mockRestore();
   pushMessage.mockRestore();
 });
 
-test("指定したユーザーに乾燥完了をプッシュ通知する", async () => {
-  const api = createLineApi("test-channel-access-token", "test-user-id");
-
+test("ユーザーIDの指定なしで友だち全員に乾燥完了を一斉配信する", async () => {
+  const api = createLineApi("test-channel-access-token");
   await expect(api.sendNotificationFinishDrying()).resolves.toBeUndefined();
-
-  expect(pushMessage).toHaveBeenCalledExactlyOnceWith({
-    to: "test-user-id",
+  expect(broadcast).toHaveBeenCalledExactlyOnceWith({
     messages: [{ type: "text", text: "洗濯物の乾燥が完了しました。" }],
   });
-  expect(replyMessage).not.toHaveBeenCalled();
+  expect(pushMessage).not.toHaveBeenCalled();
 });
 
-test("乾燥完了の通知先をAPIごとに保持する", async () => {
-  const first = createLineApi("test-channel-access-token", "first-user-id");
-  const second = createLineApi("test-channel-access-token", "second-user-id");
-
-  await first.sendNotificationFinishDrying();
-  await second.sendNotificationFinishDrying();
-
-  expect(pushMessage.mock.calls.map(([request]) => request.to)).toEqual([
-    "first-user-id",
-    "second-user-id",
-  ]);
-});
-
-test("乾燥完了の通知に失敗した場合は呼び出し元にエラーを返す", async () => {
-  const error = new Error("通知に失敗しました。");
-  pushMessage.mockRejectedValueOnce(error);
-  const api = createLineApi("test-channel-access-token", "test-user-id");
-
+test("一斉配信に失敗した場合はエラーを返して再試行できる", async () => {
+  const error = new Error("broadcast failed");
+  broadcast.mockRejectedValueOnce(error);
+  const api = createLineApi("test-channel-access-token");
   await expect(api.sendNotificationFinishDrying()).rejects.toBe(error);
-  expect(pushMessage).toHaveBeenCalledOnce();
+  await expect(api.sendNotificationFinishDrying()).resolves.toBeUndefined();
+  expect(broadcast).toHaveBeenCalledTimes(2);
 });
 
-test.each(["", " \n\t"])("アクセストークンが空の場合は通知用APIを作成しない: %j", (token) => {
-  expect(() => createLineApi(token, "test-user-id")).toThrow("チャネルアクセストークン");
-  expect(pushMessage).not.toHaveBeenCalled();
-});
-
-test.each(["", " \n\t"])("通知先が空の場合は通知用APIを作成しない: %j", (userId) => {
-  expect(() => createLineApi("test-channel-access-token", userId)).toThrow("通知先のユーザーID");
-  expect(pushMessage).not.toHaveBeenCalled();
+test.each(["", " \n\t"])("アクセストークンが空なら通知用APIを作成しない: %j", (token) => {
+  expect(() => createLineApi(token)).toThrow("チャネルアクセストークン");
+  expect(broadcast).not.toHaveBeenCalled();
 });

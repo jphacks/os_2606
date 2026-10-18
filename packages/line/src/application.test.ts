@@ -35,7 +35,7 @@ vi.mock("@os/core", async (importOriginal) => {
 });
 
 const env = {
-  LINE_CHANNEL_SECRET: "test-secret", LINE_CHANNEL_ACCESS_TOKEN: "test-token", LINE_USER_ID: "owner",
+  LINE_CHANNEL_SECRET: "test-secret", LINE_CHANNEL_ACCESS_TOKEN: "test-token",
   OUTDOOR_TEMPERATURE: "18", OUTDOOR_HUMIDITY: "60",
 };
 
@@ -57,7 +57,7 @@ test("デバイスが存在しても初回測定に失敗したらWebhookを公�
   expect(hardware.remote.send).not.toHaveBeenCalled();
 });
 
-test.each(["LINE_USER_ID", "OUTDOOR_TEMPERATURE", "OUTDOOR_HUMIDITY"])("必須設定%sがなければ起動しない", (name) => {
+test.each(["OUTDOOR_TEMPERATURE", "OUTDOOR_HUMIDITY"])("必須設定%sがなければ起動しない", (name) => {
   expect(() => readApplicationConfig({ ...env, [name]: " " })).toThrow(name);
 });
 test.each([
@@ -72,7 +72,7 @@ test.each([false, true])("Webhookから送信・停止・通知まで実行す�
     hardware.remote.supports.mockImplementation((message) => message.acMode === "dehumidify" && !("fanSpeed" in message));
   }
   const reply = vi.spyOn(LineBotClient.prototype, "replyMessage").mockResolvedValue({ sentMessages: [] });
-  const push = vi.spyOn(LineBotClient.prototype, "pushMessage").mockResolvedValue({ sentMessages: [] });
+  const broadcast = vi.spyOn(LineBotClient.prototype, "broadcast").mockResolvedValue({});
   const config = readApplicationConfig(env);
   const application = await createApplication(config);
   expect(hardware.sensor.measure).toHaveBeenCalledOnce();
@@ -93,8 +93,6 @@ test.each([false, true])("Webhookから送信・停止・通知まで実行す�
         headers: { "content-type": "application/json", "x-line-signature": createHmac("sha256", env.LINE_CHANNEL_SECRET).update(body).digest("base64") },
       });
     }
-    expect((await send("洗濯したよ", "someone-else")).status).toBe(200);
-    expect(hardware.remote.send).not.toHaveBeenCalled();
     expect((await send("洗濯したよ")).status).toBe(200);
     expect(hardware.loadRemote).toHaveBeenCalledOnce();
     expect(hardware.loadSensor).toHaveBeenCalledOnce();
@@ -124,18 +122,27 @@ test.each([false, true])("Webhookから送信・停止・通知まで実行す�
       });
     }
     expect(reply).toHaveBeenCalledOnce();
+    expect((await send("洗濯したよ", "someone-else")).status).toBe(200);
+    expect(reply).toHaveBeenCalledTimes(2);
+    expect(hardware.remote.send).toHaveBeenCalledOnce();
     hardware.now = expected.estimatedDryingHours * 3_600_000;
     await hardware.tick();
     expect(hardware.remote.stop).toHaveBeenCalledOnce();
-    expect(push).toHaveBeenCalledExactlyOnceWith({
-      to: "owner", messages: [{ type: "text", text: "洗濯物の乾燥が完了しました。" }],
+    expect(broadcast).toHaveBeenCalledExactlyOnceWith({
+      messages: [{ type: "text", text: "洗濯物の乾燥が完了しました。" }],
     });
-    expect(hardware.remote.stop.mock.invocationCallOrder[0]).toBeLessThan(push.mock.invocationCallOrder[0]!);
+    expect(hardware.remote.stop.mock.invocationCallOrder[0]).toBeLessThan(broadcast.mock.invocationCallOrder[0]!);
+    // 次の乾燥は別のユーザーも開始でき、通知は再び一斉配信する。
+    expect((await send("洗濯したよ", "someone-else")).status).toBe(200);
+    expect(hardware.remote.send).toHaveBeenCalledTimes(2);
+    hardware.now += expected.estimatedDryingHours * 3_600_000;
+    await hardware.tick();
+    expect(broadcast).toHaveBeenCalledTimes(2);
   } finally {
     await application.dispose();
     server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     reply.mockRestore();
-    push.mockRestore();
+    broadcast.mockRestore();
   }
 });
