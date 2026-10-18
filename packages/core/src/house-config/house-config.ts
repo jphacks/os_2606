@@ -8,6 +8,7 @@ import type {
   GetLaundryPositionFromAC,
   HouseConfig,
   UpdateHouseConfig,
+  UpdateUserComfortTemperature,
 } from "./types/index.js";
 
 // 保存先は環境変数 HOUSE_CONFIG_PATH で指定する（未指定なら data/house_config.json）
@@ -76,4 +77,14 @@ export const updateHouseConfig: UpdateHouseConfig = async (patch) => {
 export const getLaundryPositionFromAC: GetLaundryPositionFromAC = async () => {
   const config = await getHouseConfig();
   return config.laundryPositionFromAC;
+};
+
+// ユーザが設定した快適温度を家の設定に書き込む
+export const updateUserComfortTemperature: UpdateUserComfortTemperature = async (temperature) => {
+  // 1. 現在の設定を読み込む
+  const config = await getHouseConfig();
+  // 該当箇所だけ更新し、範囲外の温度は読み込み時と同じ検証で弾く
+  const updated = parseHouseConfig({ ...config, userComfortTemperature: temperature }, houseConfigPath());
+  // 2. 書き込む
+  await updateHouseConfig(updated);
 };

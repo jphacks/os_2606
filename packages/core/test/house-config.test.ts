@@ -2,7 +2,11 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { getHouseConfig, updateHouseConfig } from "../src/house-config/house-config.js";
+import {
+  getHouseConfig,
+  updateHouseConfig,
+  updateUserComfortTemperature,
+} from "../src/house-config/house-config.js";
 import type { HouseConfig } from "../src/house-config/types/house-config.js";
 
 let dir: string;
@@ -71,4 +75,32 @@ test.each([16, 28, 23.5])("快適温度は範囲内（%s℃）なら保存して
   const config = { ...TOKYO, userComfortTemperature };
   await updateHouseConfig(config);
   expect(await getHouseConfig()).toEqual(config);
+});
+
+test("快適温度を書き込むと、ファイルが無くても他の項目はデフォルト値で保存される", async () => {
+  await updateUserComfortTemperature(20);
+  expect(await getHouseConfig()).toEqual({ ...DEFAULT, userComfortTemperature: 20 });
+});
+
+test("快適温度を書き込んでも、既存の他の項目は保持される", async () => {
+  await updateHouseConfig(TOKYO);
+  await updateUserComfortTemperature(25.5);
+  expect(await getHouseConfig()).toEqual({ ...TOKYO, userComfortTemperature: 25.5 });
+});
+
+test.each([15, 29, Number.NaN, Number.POSITIVE_INFINITY])(
+  "範囲外の快適温度（%s）はエラーになり、ファイルを書き換えない",
+  async (temperature) => {
+    await updateHouseConfig(TOKYO);
+    const before = await readFile(path, "utf8");
+    await expect(updateUserComfortTemperature(temperature)).rejects.toThrow();
+    expect(await readFile(path, "utf8")).toBe(before);
+  },
+);
+
+test("設定ファイルが不正なら快適温度の書き込みもエラーになり、上書きしない", async () => {
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, '{"region": 123}');
+  await expect(updateUserComfortTemperature(24)).rejects.toThrow();
+  expect(await readFile(path, "utf8")).toBe('{"region": 123}');
 });
