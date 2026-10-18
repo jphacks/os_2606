@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import {
-  calculateVpd, decideNextOperation, DEFAULT_DRYING_CONFIG,
-  estimateDryingHours, estimateProgressGain, evaluateOperations,
-  generateOperationCandidates, simulateEnvironment, updateObservedProgress,
-} from "./index.js";
+import { decideNextOperation, DEFAULT_DRYING_CONFIG } from "./index.js";
+import { calculateVpd } from "./vpd.js";
+import { estimateDryingHours, estimateProgressGain, updateObservedProgress } from "./estimator.js";
+import { evaluateOperations } from "./operation-evaluator.js";
+import { generateOperationCandidates } from "./candidate-generator.js";
+import { simulateEnvironment } from "./environment-simulator.js";
 import type { DryingConfig, DryingContext } from "./index.js";
 
 const context: DryingContext = {
@@ -60,7 +61,7 @@ describe("候補と判断", () => {
     const config: DryingConfig = {
       ...DEFAULT_DRYING_CONFIG,
       temperatureRanges: { ...DEFAULT_DRYING_CONFIG.temperatureRanges, cool: { min: 23, max: 25, step: 2 } },
-      capabilities: { modes: ["cool"], fanSpeeds: { cool: ["low"], heat: [], dry: [] }, allowOff: false },
+      capabilities: { modes: ["cool"], fanSpeeds: { cool: ["low"], heat: [], dehumidify: [] }, allowOff: false },
     };
     expect(generateOperationCandidates({ ...context, presenceMode: "away" }, config)).toEqual([
       { mode: "cool", temperature: 23, fanSpeed: "low" },
@@ -98,7 +99,12 @@ describe("候補と判断", () => {
     const comfortOnly = { ...DEFAULT_DRYING_CONFIG, dryingWeight: 0 };
     expect(decideNextOperation({ ...context, comfortTemperature: 22 }, comfortOnly).mode).toBe("cool");
     expect(decideNextOperation({ ...context, comfortTemperature: 26 }, comfortOnly).mode).toBe("heat");
-    expect(decideNextOperation(context).score).toBe(Math.min(...evaluateOperations(context).map((op) => op.score)));
+    const evaluated = evaluateOperations(context);
+    const plan = decideNextOperation(context);
+    expect(evaluated).toContainEqual(expect.objectContaining({
+      operation: { mode: plan.mode, temperature: plan.temperature, fanSpeed: plan.fanSpeed },
+      score: Math.min(...evaluated.map((op) => op.score)),
+    }));
   });
 
   it("同点では温度変更を抑え、完了進捗でも有限・決定的な結果を返す", () => {
@@ -106,16 +112,28 @@ describe("候補と判断", () => {
     const config: DryingConfig = {
       ...DEFAULT_DRYING_CONFIG, dryingWeight: 1,
       simulator: { ...simulator, outdoorTemperatureRate: 0, outdoorVaporRate: 0,
-        temperatureRate: { cool: 0, heat: 0, dry: 0 },
-        dehumidificationRate: { cool: 0, heat: 0, dry: 0 } },
+        temperatureRate: { cool: 0, heat: 0, dehumidify: 0 },
+        dehumidificationRate: { cool: 0, heat: 0, dehumidify: 0 } },
     };
     expect(decideNextOperation(context, config).temperature).toBe(24);
     expect(decideNextOperation(context)).toEqual(decideNextOperation(context));
     const complete = decideNextOperation({ ...context, dryingProgress: 1 });
-    expect(complete.estimatedProgressGain).toBe(0);
-    expect(Number.isFinite(complete.score)).toBe(true);
-    expect(complete.nextEvaluationMinutes).toBe(60);
-    expect(simulateEnvironment({ ...context, dryingProgress: 0.999 }, { mode: "dry", temperature: 24, fanSpeed: "high" }).estimatedProgressGain).toBeCloseTo(0.001);
+    expect(complete.estimatedDryingHours).toBe(0);
+    expect(simulateEnvironment({ ...context, dryingProgress: 0.999 }, { mode: "dehumidify", temperature: 24, fanSpeed: "high" }).estimatedProgressGain).toBeCloseTo(0.001);
+  });
+
+  it("一定環境の残り時間を返し、乾燥が進まない場合はInfinity、進捗1なら0を返す", () => {
+    const config: DryingConfig = {
+      ...DEFAULT_DRYING_CONFIG,
+      capabilities: { ...DEFAULT_DRYING_CONFIG.capabilities, modes: [] },
+      simulator: { ...DEFAULT_DRYING_CONFIG.simulator, outdoorTemperatureRate: 0, outdoorVaporRate: 0 },
+    };
+    const away: DryingContext = { ...context, presenceMode: "away", dryingProgress: 0.5 };
+    expect(decideNextOperation(away, config)).toEqual({
+      mode: "off", estimatedDryingHours: expect.closeTo(11.733456750930142 / 2, 10),
+    });
+    expect(decideNextOperation({ ...away, indoorHumidity: 100 }, config).estimatedDryingHours).toBe(Infinity);
+    expect(decideNextOperation({ ...away, indoorHumidity: 100, dryingProgress: 1 }, config).estimatedDryingHours).toBe(0);
   });
 
   it("端数の時間刻みでも一定環境の積分が一致する", () => {
