@@ -1,14 +1,18 @@
-import { quickReply } from "./command.js";
 import { LineBotClient } from "@line/bot-sdk";
 import type { CoreApi } from "@os/api";
 import { createHmac } from "node:crypto";
 import { once } from "node:events";
 import { createServer } from "node:http";
+import { Readable } from "node:stream";
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { createLineBot } from "./index.js";
 
 const channelSecret = "test-channel-secret";
 const replyMessage = vi.spyOn(LineBotClient.prototype, "replyMessage");
+const getMessageContent = vi.spyOn(
+  LineBotClient.prototype,
+  "getMessageContentWithHttpInfo",
+);
 const core = {
   leaveHouse: vi.fn(async () => {}),
   arriveHouse: vi.fn(async () => {}),
@@ -42,6 +46,7 @@ afterAll(async () => {
   server.closeAllConnections();
   await closed;
   replyMessage.mockRestore();
+  getMessageContent.mockRestore();
 });
 
 function sign(body: string): string {
@@ -68,36 +73,35 @@ test("接続確認の空イベントを受け付ける", async () => {
   expect(replyMessage).not.toHaveBeenCalled();
 });
 
-test("決まっていない文字には使い方とボタンを返信する", async () => {
+test("文字を打たれてもCoreApiは呼ばず、メニューを案内する", async () => {
   const body = JSON.stringify({
     destination: "test-bot",
     events: [
       {
         type: "message",
         replyToken: "test-reply-token",
-        message: { type: "text", text: "こんにちは" },
+        message: { type: "text", text: "いってきます" },
       },
     ],
   });
   const response = await postWebhook(body, sign(body));
   expect(response.status).toBe(200);
+  expect(core.leaveHouse).not.toHaveBeenCalled();
   expect(replyMessage).toHaveBeenCalledExactlyOnceWith({
     replyToken: "test-reply-token",
-    messages: [
-      { type: "text", text: "下のボタンから選んでください。", quickReply },
-    ],
+    messages: [{ type: "text", text: "画面下のメニューから選んでください。" }],
   });
 });
 
-test("テキスト以外や返信トークンのないイベントには返信しない", async () => {
+test("スタンプや返信トークンのないイベントには返信しない", async () => {
   const body = JSON.stringify({
     destination: "test-bot",
     events: [
       { type: "follow", replyToken: "follow-token" },
       {
         type: "message",
-        replyToken: "image-token",
-        message: { type: "image", id: "image-id" },
+        replyToken: "sticker-token",
+        message: { type: "sticker", id: "sticker-id" },
       },
       { type: "message", message: { type: "text", text: "返信トークンなし" } },
     ],
@@ -145,14 +149,14 @@ test("署名が正しくても不正なJSONは拒否する", async () => {
   expect(response.status).toBe(400);
 });
 
-test("「いってきます」を受け取るとleaveHouseを呼び、いってらっしゃいと返信する", async () => {
+test("「いってきます」ボタンを押すとleaveHouseを呼び、返信する", async () => {
   const body = JSON.stringify({
     destination: "test-bot",
     events: [
       {
-        type: "message",
+        type: "postback",
         replyToken: "test-reply-token",
-        message: { type: "text", text: "いってきます" },
+        postback: { data: "leave-house" },
       },
     ],
   });
@@ -161,6 +165,54 @@ test("「いってきます」を受け取るとleaveHouseを呼び、いって�
   expect(core.leaveHouse).toHaveBeenCalledOnce();
   expect(replyMessage).toHaveBeenCalledExactlyOnceWith({
     replyToken: "test-reply-token",
-    messages: [{ type: "text", text: "いってらっしゃい！", quickReply }],
+    messages: [
+      { type: "text", text: "いってらっしゃい！\n洗濯物の乾燥を始めます。" },
+    ],
+  });
+});
+
+test("タブを切り替えても返信しない", async () => {
+  const body = JSON.stringify({
+    destination: "test-bot",
+    events: [
+      {
+        type: "postback",
+        replyToken: "test-reply-token",
+        postback: { data: "switch-to-laundry-tab" },
+      },
+    ],
+  });
+  const response = await postWebhook(body, sign(body));
+  expect(response.status).toBe(200);
+  expect(replyMessage).not.toHaveBeenCalled();
+});
+
+test("写真を受け取るとダウンロードしてhangLaundryEvidenceに渡す", async () => {
+  getMessageContent.mockResolvedValueOnce({
+    httpResponse: new Response(null, {
+      headers: { "content-type": "image/png" },
+    }),
+    body: Readable.from([Buffer.from([1, 2, 3])]),
+  });
+  const body = JSON.stringify({
+    destination: "test-bot",
+    events: [
+      {
+        type: "message",
+        replyToken: "test-reply-token",
+        message: { type: "image", id: "image-id" },
+      },
+    ],
+  });
+  const response = await postWebhook(body, sign(body));
+  expect(response.status).toBe(200);
+  expect(getMessageContent).toHaveBeenCalledExactlyOnceWith("image-id");
+  expect(core.hangLaundryEvidence).toHaveBeenCalledExactlyOnceWith({
+    data: Buffer.from([1, 2, 3]),
+    mimeType: "image/png",
+  });
+  expect(replyMessage).toHaveBeenCalledExactlyOnceWith({
+    replyToken: "test-reply-token",
+    messages: [{ type: "text", text: "洗濯物の写真を受け取りました。" }],
   });
 });

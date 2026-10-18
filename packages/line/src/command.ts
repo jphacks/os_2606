@@ -1,42 +1,60 @@
 import type { messagingApi } from "@line/bot-sdk";
-import type { CoreApi } from "@os/api";
+import type { CoreApi, Image } from "@os/api";
+import {
+  laundryPhotoRequestMessage,
+  laundryPositionMessage,
+  menuGuideMessage,
+  textMessage,
+} from "./messages.js";
+import { POSTBACK_DATA } from "./postback-data.js";
 
-// ボタンに表示する文字。押すとこの文字がユーザーから送信される。
-export const BUTTON_TEXTS = [
-  "いってきます",
-  "ただいま",
-  "左",
-  "正面",
-  "右",
-] as const;
-
-// 返信の下に表示するボタン（クイックリプライ）。
-export const quickReply: messagingApi.QuickReply = {
-  items: BUTTON_TEXTS.map((text) => ({
-    type: "action",
-    action: { type: "message", label: text, text },
-  })),
-};
-
-// 受け取った文字に応じてCoreApiを呼び、返信する文章を返す。
-export async function handleText(text: string, core: CoreApi): Promise<string> {
-  switch (text.trim()) {
-    case "いってきます":
+// ボタン（ポストバック）が押されたとき。CoreApiを呼び、返信するメッセージを返す。
+// 返信しないときは空の配列を返す。
+export async function handlePostback(
+  data: string,
+  core: CoreApi,
+): Promise<messagingApi.Message[]> {
+  switch (data) {
+    case POSTBACK_DATA.leaveHouse:
       await core.leaveHouse();
-      return "いってらっしゃい！";
-    case "ただいま":
+      return [textMessage("いってらっしゃい！\n洗濯物の乾燥を始めます。")];
+    case POSTBACK_DATA.arriveHouse:
       await core.arriveHouse();
-      return "おかえりなさい！";
-    case "左":
+      return [textMessage("おかえりなさい！")];
+    case POSTBACK_DATA.askLaundryPhoto:
+      return [laundryPhotoRequestMessage()];
+    case POSTBACK_DATA.askLaundryPosition:
+      return [laundryPositionMessage()];
+    case POSTBACK_DATA.laundryPositionLeft:
       await core.laundryPositionFromAC("left");
-      return "洗濯物の位置を左にしました。";
-    case "正面":
+      return [textMessage("洗濯物の位置を左にしました。")];
+    case POSTBACK_DATA.laundryPositionCenter:
       await core.laundryPositionFromAC("center");
-      return "洗濯物の位置を正面にしました。";
-    case "右":
+      return [textMessage("洗濯物の位置を正面にしました。")];
+    case POSTBACK_DATA.laundryPositionRight:
       await core.laundryPositionFromAC("right");
-      return "洗濯物の位置を右にしました。";
+      return [textMessage("洗濯物の位置を右にしました。")];
+    case POSTBACK_DATA.askRegion:
+      return [textMessage("地域の設定は準備中です。")];
+    case POSTBACK_DATA.switchToOutingTab:
+    case POSTBACK_DATA.switchToLaundryTab:
+      // タブの切り替えはLINEアプリが行うので、返信しない
+      return [];
     default:
-      return "下のボタンから選んでください。";
+      return [];
   }
+}
+
+// 文字を打たれたとき。Coreは呼ばず、メニューを案内する。
+export function handleText(): messagingApi.Message[] {
+  return [menuGuideMessage()];
+}
+
+// 写真が送られたとき
+export async function handleImage(
+  image: Image,
+  core: CoreApi,
+): Promise<messagingApi.Message[]> {
+  await core.hangLaundryEvidence(image);
+  return [textMessage("洗濯物の写真を受け取りました。")];
 }
