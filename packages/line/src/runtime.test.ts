@@ -4,6 +4,47 @@ import { POSTBACK_DATA } from "./postback-data.js";
 import { createRuntime } from "./runtime.js";
 import type { CycleDependencies } from "@os/core";
 
+test("設定温度は送信成功後に通知し、同じ温度や送信失敗では通知しない", async () => {
+  let temperature = 26;
+  const remoteControl = { send: vi.fn(async () => {}), stop: vi.fn(async () => {}) };
+  const onTemperatureChanged = vi.fn(async (_temperature: number) => {});
+  const onError = vi.fn();
+  const runtime = createRuntime({
+    sensor: { measure: async () => ({ temperature: 24, humidity: 70 }) },
+    remoteControl, onTemperatureChanged, onError, onFinishDrying: async () => {},
+    outdoorTemperature: 18, outdoorHumidity: 60, comfortTemperature: 24,
+  }, {
+    now: () => 0,
+    decideNextOperation: () => ({ mode: "heat", temperature, fanSpeed: "high", estimatedDryingHours: 1 }),
+    createTask: () => ({ start() {}, stop() {}, destroy() {} }),
+  });
+  try {
+    remoteControl.send.mockRejectedValueOnce(new Error("IR failed"));
+    await expect(runtime.core.startDrying()).rejects.toThrow("IR failed");
+    expect(onTemperatureChanged).not.toHaveBeenCalled();
+    await runtime.core.startDrying();
+    expect(onTemperatureChanged).toHaveBeenCalledExactlyOnceWith(26);
+    expect(onTemperatureChanged.mock.invocationCallOrder[0]).toBeGreaterThan(remoteControl.send.mock.invocationCallOrder[1]!);
+    await runtime.core.leaveHouse();
+    expect(onTemperatureChanged).toHaveBeenCalledOnce();
+    temperature = 24;
+    await runtime.core.arriveHouse();
+    expect(onTemperatureChanged).toHaveBeenLastCalledWith(24);
+    expect(onTemperatureChanged).toHaveBeenCalledTimes(2);
+
+    const error = new Error("LINE failed");
+    onTemperatureChanged.mockRejectedValueOnce(error);
+    temperature = 25;
+    await expect(runtime.core.leaveHouse()).resolves.toEqual({ estimatedDryingHours: 1 });
+    expect(onError).toHaveBeenCalledWith(error);
+    const sends = remoteControl.send.mock.calls.length;
+    await runtime.core.startDrying();
+    expect(remoteControl.send).toHaveBeenCalledTimes(sends); // 通知失敗でもサイクルは維持する。
+  } finally {
+    await runtime.dispose();
+  }
+});
+
 test("LINEコマンドから観測・実機操作・停止・完了通知までつながる", async () => {
   let now = 0;
   let tick = async () => {};
