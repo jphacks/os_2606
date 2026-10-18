@@ -36,7 +36,7 @@ export const toshiba72: Protocol = {
     setBits(state, 4, 0x28, 0);
     let modeCode = 7; // Power off.
     if (message) {
-      modeCode = message.acMode === "cool" ? 1 : 3;
+      modeCode = { cool: 1, heat: 3, dehumidify: 2 }[message.acMode];
     }
     setBits(state, 6, 7, modeCode);
 
@@ -44,7 +44,9 @@ export const toshiba72: Protocol = {
       rejectFixedWind(message);
       validateTemperature(message, 17, 30);
       setBits(state, 5, 0xf0, (message.temperature - 17) << 4);
-      setBits(state, 6, 0xe0, 0);
+      if (message.fanSpeed !== undefined) {
+        setBits(state, 6, 0xe0, { low: 0x60, medium: 0x80, high: 0xa0 }[message.fanSpeed]);
+      }
     }
 
     state[8] = calculateChecksum(state);

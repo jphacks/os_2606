@@ -22,6 +22,8 @@ export interface LearnedRemote {
     | "hitachi424"
     | "sharp104";
   state: number[];
+  /** Retain the learned Sharp variant: dry commands clear the A705 model bit. */
+  sharpModel?: "a705" | "a903" | "a907";
 }
 
 export function validateInteger(value: unknown, min: number, max: number, name: string): number {

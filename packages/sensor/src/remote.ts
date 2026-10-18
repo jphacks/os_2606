@@ -6,14 +6,14 @@ import { receive, transmit } from "./lirc.js";
 import { encode, identify, validateRemote } from "./protocol.js";
 import type { IrSignal, LearnedRemote } from "./types.js";
 
-const remoteFile = "data/ir/remote.json";
+const remotePath = (): string => process.env.IR_REMOTE_PATH ?? "data/ir/remote.json";
 
 /** Only replace the previous learned remote after decoding and validation succeed. */
 export async function saveSignal(signal: IrSignal): Promise<LearnedRemote> {
   return saveRemote(identify(signal));
 }
 
-async function saveRemote(learnedRemote: LearnedRemote): Promise<LearnedRemote> {
+async function saveRemote(learnedRemote: LearnedRemote, remoteFile = remotePath()): Promise<LearnedRemote> {
   await mkdir(dirname(remoteFile), { recursive: true });
   const temporaryFile = `${remoteFile}.${randomUUID()}.tmp`;
 
@@ -37,6 +37,7 @@ export async function learnRemote(abortSignal?: AbortSignal): Promise<LearnedRem
 }
 
 export async function loadRemoteControl(): Promise<RemoteControl> {
+  const remoteFile = remotePath();
   const savedData = await readFile(remoteFile, "utf8");
   let learnedRemote = validateRemote(JSON.parse(savedData));
   let sendQueue = Promise.resolve();
@@ -47,12 +48,15 @@ export async function loadRemoteControl(): Promise<RemoteControl> {
     const sendTask = sendQueue.then(async () => {
       const signal = encode(learnedRemote, messageSnapshot);
       const nextRemote = messageSnapshot ? identify(signal) : undefined;
+      if (nextRemote && learnedRemote.sharpModel !== undefined) {
+        nextRemote.sharpModel = learnedRemote.sharpModel;
+      }
 
       await transmit(signal);
       if (nextRemote) {
         learnedRemote = nextRemote;
         try {
-          await saveRemote(learnedRemote);
+          await saveRemote(learnedRemote, remoteFile);
         } catch (cause) {
           throw new Error("IR was sent, but saving the last settings failed.", { cause });
         }
@@ -65,6 +69,14 @@ export async function loadRemoteControl(): Promise<RemoteControl> {
   };
 
   return {
+    supports(message) {
+      try {
+        encode(learnedRemote, message);
+        return true;
+      } catch {
+        return false;
+      }
+    },
     send: (message) => {
       if (!message || typeof message !== "object") {
         return Promise.reject(new Error("An AC message is required."));

@@ -56,9 +56,11 @@ export const panasonic216: Protocol = {
 
     if (message) {
       validateTemperature(message, 16, 30);
-      setBits(state, 13, 0xf0, (message.acMode === "cool" ? 3 : 4) << 4);
+      setBits(state, 13, 0xf0, { cool: 0x30, heat: 0x40, dehumidify: 0x20 }[message.acMode]);
       setBits(state, 14, 0x3e, message.temperature << 1);
-      setBits(state, 16, 0xf0, 0xa0);
+      if (message.fanSpeed !== undefined) {
+        setBits(state, 16, 0xf0, { low: 0x40, medium: 0x50, high: 0x60 }[message.fanSpeed]);
+      }
       setBits(state, 21, 0x21, 0); // Quiet and powerful (swapped on RKR).
 
       if (message.windDirectionVertical !== undefined) {

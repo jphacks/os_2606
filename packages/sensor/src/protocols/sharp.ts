@@ -37,8 +37,27 @@ export const sharp104: Protocol = {
         throw new Error("This Sharp A705/A903 variant does not support heating.");
       }
       const isA705 = isCoolingOnly && Boolean(state[4]! & 0x10);
-      state[4] = (isA705 ? 0xd0 : 0xc0) | (message.temperature - 15);
-      setBits(state, 6, 0x73, 0x20 | (message.acMode === "cool" ? 2 : 1));
+      setBits(state, 6, 3, { cool: 2, heat: 1, dehumidify: 3 }[message.acMode]);
+      if (message.acMode === "dehumidify") {
+        if (message.fanSpeed !== undefined) {
+          throw new Error("Sharp dehumidify uses automatic fan speed. Omit fanSpeed.");
+        }
+        state[4] = 0; // Dry has no temperature setting.
+        setBits(state, 6, 0x70, 0x20);
+      } else {
+        let temperaturePrefix = 0xc0;
+        if (isA705) {
+          temperaturePrefix = 0xd0;
+        }
+        state[4] = temperaturePrefix | (message.temperature - 15);
+        if (message.fanSpeed !== undefined) {
+          let fan = { low: 4, medium: 3, high: 5 }[message.fanSpeed];
+          if (isCoolingOnly) {
+            fan = { low: 3, medium: 5, high: 7 }[message.fanSpeed];
+          }
+          setBits(state, 6, 0x70, fan << 4);
+        }
+      }
     }
 
     setBits(state, 12, 0xf0, calculateChecksum(state) << 4);
