@@ -192,14 +192,22 @@ sudoedit /opt/os_2606/shared/.env
 sudo systemctl restart os2606-line.service
 ```
 
-配布にはビルド済みコードと依存関係の定義だけを含め、`node_modules`はPiで導入します。
+配布にはビルド済みコード・依存関係の定義・リッチメニュー画像を含め、`node_modules`はPiで導入します。
+サービスの再起動後、`pnpm setup:rich-menu`でLINEのリッチメニューを自動登録します。
+メニューが表示されない場合はデプロイログの登録結果を確認してください。再登録はPi上で次のコマンドを実行します。
+
+```sh
+cd /opt/os_2606/app
+pnpm setup:rich-menu
+```
+
 設定とデータは`shared/.env`・`shared/data`に残り、`app/.env`・`app/data`から参照できます。
 CLIは`cd /opt/os_2606/app`してから実行してください。
 GPIO番号を変更した場合は、配線と`/boot/firmware/config.txt`も合わせてPiを再起動します。
 詳細は[センサーのREADME](../packages/sensor/README.md)、LINEの公開HTTPS URLは[LINEのREADME](../packages/line/README.md#lineとの接続)を参照してください。
 
 転送やアーカイブの検査で失敗した場合は、現行サービスを停止しません。
-更新開始後に依存関係の導入や起動確認が失敗した場合は、原因を修正してActionsを再実行してください。
+更新開始後に依存関係の導入・起動確認・リッチメニュー登録が失敗した場合は、原因を修正してActionsを再実行してください。
 コードを戻す場合は`main`で変更をrevertして再デプロイします。旧コードへの自動復旧は行いません。
 
 参考: [Tailscale OIDC](https://tailscale.com/docs/features/workload-identity-federation)、[Tailscale SSH](https://tailscale.com/docs/features/tailscale-ssh)、[pnpm install](https://pnpm.io/10.x/cli/install)。

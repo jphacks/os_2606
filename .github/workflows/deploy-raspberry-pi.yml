@@ -50,7 +50,7 @@ jobs:
         run: |
           tar -czf "$RUNNER_TEMP/app.tar.gz" \
             package.json pnpm-lock.yaml pnpm-workspace.yaml .env.example \
-            packages/*/package.json packages/*/dist
+            packages/*/package.json packages/*/dist packages/line/assets
 
       - name: Validate deployment settings
         env:
@@ -109,5 +109,6 @@ jobs:
           ln -sfn "$deploy_root/shared/data" data
           CI=true pnpm install --prod --frozen-lockfile --ignore-scripts
           sudo -n /usr/bin/systemctl restart os2606-line.service
+          pnpm setup:rich-menu
           rm -f "$deploy_root/app.tar.gz"
           REMOTE
