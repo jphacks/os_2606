@@ -23,33 +23,25 @@ const plan = decideNextOperation({
 
 // plan.mode: "cool" | "heat" | "dehumidify" | "off"
 // plan.temperature / plan.fanSpeed: 運転時の設定。停止時は省略。
-// plan.nextEvaluationMinutes: この計画を再評価するまでの分数。
-// plan.estimatedProgressGain: その区間の推定乾燥進捗。
-// plan.predictedTemperature / plan.predictedHumidity: 区間終了時の予測。
-// plan.score / plan.reason: 選択した候補の比較コストと判断方針。
+// plan.estimatedDryingHours: 乾くまでの推定残り時間（時間）。
 ```
 
 返すのは次の区間の計画1件です。複数時間にわたる運転スケジュールではありません。
+`estimatedDryingHours` は、選んだ運転による予測区間終了時の温湿度が続くと仮定し、
+`(1 - dryingProgress) * 10.5035 / VPD` で計算します。進捗1なら0、乾燥が進まない条件ではInfinityです。
+予測区間までの過渡変化を含む完了時刻のシミュレーションではなく、残り時間の目安です。
+再評価の間隔は `config.evaluationMinutes`（標準60分）を使ってください。
 入力・設定が不正な場合や、対応する運転候補がない場合は `RangeError` を投げます。
 
-## 設定と補助関数
+## 設定
 
-通常は `decideNextOperation` だけで計画を取得できます。
-候補一覧・評価の内訳が必要な場合は、次の補助関数を利用できます。
-
-| 関数 | 返すもの |
-| --- | --- |
-| `generateOperationCandidates(context, config?)` | 実機の制約に合う運転候補 |
-| `evaluateOperations(context, config?)` | 全候補の予測と比較コスト |
-| `simulateEnvironment(context, operation, config?)` | 指定した運転の環境予測 |
-| `updateObservedProgress(progress, previous, current)` | 実測値から計算した観測進捗 |
+`@os/core/drying` が公開する値は `decideNextOperation` と `DEFAULT_DRYING_CONFIG` の2つです。
+入出力と設定に必要な型も公開します。候補生成・評価・シミュレーション・VPD計算は内部実装です。
 
 ```typescript
 import {
   decideNextOperation,
   DEFAULT_DRYING_CONFIG,
-  evaluateOperations,
-  generateOperationCandidates,
 } from "@os/core/drying";
 
 const context = {
@@ -73,8 +65,6 @@ const config = {
   },
 };
 
-const candidates = generateOperationCandidates(context, config);
-const evaluated = evaluateOperations(context, config);
 const decision = decideNextOperation(context, config);
 ```
 
@@ -109,8 +99,10 @@ const decision = decideNextOperation(context, config);
 
 ## 観測進捗と定期実行
 
+定期実行で使う `updateObservedProgress` と `EnvironmentObservation` は、
+既存の利用のため `@os/core` から公開しています（`@os/core/drying` には含めません）。
 `updateObservedProgress` は時刻付きの前回・今回の実測VPDを台形積分します。
-`decision.estimatedProgressGain` は今後の予測なので、保存済み進捗には加算しません。
+運転計画の推定残り時間から、保存済みの観測進捗を更新することはありません。
 観測間の実際の変動は不明であり、観測進捗も推定です。
 
 `@os/api` の `runDryingCycle(dependencies, options)` をCron等から呼び出してください。

@@ -17,19 +17,14 @@ export interface DryingContext {
   dryingProgress: number;
 }
 
-export interface DryingDecision {
-  mode: AirconMode | "off";
-  temperature?: number;
-  fanSpeed?: FanSpeed;
-  /** 次の1時間の予測値。観測済みの進捗には加算しない。 */
-  estimatedProgressGain: number;
-  predictedTemperature: number;
-  predictedHumidity: number;
-  /** 消費電力量ではなく、候補を比較するためのコスト。 */
-  score: number;
-  nextEvaluationMinutes: number;
-  reason: string;
-}
+/** 運転時は設定温度（℃）と風量を返す。停止時は両方とも省略する。 */
+export type DryingDecision = Operation & {
+  /**
+   * 乾くまでの推定残り時間（時間）。予測区間終了時の温湿度が続くと仮定する。
+   * 推定進捗が1なら0、乾燥が進まない条件ではInfinity。
+   */
+  estimatedDryingHours: number;
+};
 
 export interface TemperatureRange {
   readonly min: number;
