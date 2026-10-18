@@ -32,6 +32,11 @@ export interface DryingEstimate {
   estimatedDryingHours: number;
 }
 
+export type DryingPlan = DryingEstimate & { presenceMode: "home" | "away" } & (
+  | { mode: "off" }
+  | { mode: AcMessage["acMode"]; temperature: number; fanSpeed?: AcMessage["fanSpeed"] }
+);
+
 /** LINEから呼び出す、coreが提供するAPI。 */
 export interface CoreApi {
   /** 洗濯物を干し、在宅モードで乾燥を開始する。 */
@@ -55,8 +60,8 @@ export interface CoreApi {
 
 /** coreから呼び出す、LINEが提供するAPI。 */
 export interface LineApi {
-  /** システムが送信したエアコンの設定温度を通知する。 */
-  sendNotificationTemperatureChanged(temperature: number, acMode: AcMessage["acMode"]): Promise<void>;
+  /** 実機への送信後、現在の運転計画を通知する。 */
+  sendNotificationDryingPlan(plan: DryingPlan): Promise<void>;
   /** 乾燥の完了を通知する。 */
   sendNotificationFinishDrying(): Promise<void>;
 }

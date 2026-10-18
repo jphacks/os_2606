@@ -2,53 +2,47 @@ import { expect, test, vi } from "vitest";
 import { handlePostback, handleText } from "./command.js";
 import { POSTBACK_DATA } from "./postback-data.js";
 import { createRuntime } from "./runtime.js";
-import type { AcMessage } from "@os/api";
+import type { DryingPlan } from "@os/api";
 import type { CycleDependencies } from "@os/core";
 
-test("設定温度は送信成功後に通知し、同じ温度や送信失敗では通知しない", async () => {
-  let temperature = 26;
-  let mode: AcMessage["acMode"] = "heat";
+test("送信成功後に運転計画を通知し、重複操作や送信失敗では通知しない", async () => {
+  let plan: DryingPlan = { mode: "heat", temperature: 26, fanSpeed: "high", estimatedDryingHours: 1, presenceMode: "home" };
   const remoteControl = { send: vi.fn(async () => {}), stop: vi.fn(async () => {}) };
-  const onTemperatureChanged = vi.fn(async (_temperature: number, _mode: AcMessage["acMode"]) => {});
+  const onPlanChanged = vi.fn(async (_plan: DryingPlan) => {});
   const onError = vi.fn();
   const runtime = createRuntime({
     sensor: { measure: async () => ({ temperature: 24, humidity: 70 }) },
-    remoteControl, onTemperatureChanged, onError, onFinishDrying: async () => {},
+    remoteControl, onPlanChanged, onError, onFinishDrying: async () => {},
     outdoorTemperature: 18, outdoorHumidity: 60, comfortTemperature: 24,
   }, {
     now: () => 0,
-    decideNextOperation: () => ({ mode, temperature, fanSpeed: "high", estimatedDryingHours: 1 }),
+    decideNextOperation: () => plan,
     createTask: () => ({ start() {}, stop() {}, destroy() {} }),
   });
   try {
     remoteControl.send.mockRejectedValueOnce(new Error("IR failed"));
     await expect(runtime.core.startDrying()).rejects.toThrow("IR failed");
-    expect(onTemperatureChanged).not.toHaveBeenCalled();
+    expect(onPlanChanged).not.toHaveBeenCalled();
     await runtime.core.startDrying();
-    expect(onTemperatureChanged).toHaveBeenCalledExactlyOnceWith(26, "heat");
-    expect(onTemperatureChanged.mock.invocationCallOrder[0]).toBeGreaterThan(remoteControl.send.mock.invocationCallOrder[1]!);
+    expect(onPlanChanged).toHaveBeenCalledExactlyOnceWith(plan);
+    expect(onPlanChanged.mock.invocationCallOrder[0]).toBeGreaterThan(remoteControl.send.mock.invocationCallOrder[1]!);
+    await runtime.core.startDrying();
+    expect(onPlanChanged).toHaveBeenCalledOnce();
+    plan = { ...plan, fanSpeed: "low", estimatedDryingHours: 2 };
     await runtime.core.leaveHouse();
-    expect(onTemperatureChanged).toHaveBeenCalledOnce();
-    temperature = 24;
-    await runtime.core.arriveHouse();
-    expect(onTemperatureChanged).toHaveBeenLastCalledWith(24, "heat");
-    expect(onTemperatureChanged).toHaveBeenCalledTimes(2);
-
-    mode = "cool";
-    await runtime.core.leaveHouse();
-    expect(onTemperatureChanged).toHaveBeenLastCalledWith(24, "cool");
-    expect(onTemperatureChanged).toHaveBeenCalledTimes(3);
-    await runtime.core.arriveHouse();
-    expect(onTemperatureChanged).toHaveBeenCalledTimes(3);
-
+    expect(onPlanChanged).toHaveBeenLastCalledWith({ ...plan, presenceMode: "away" });
+    expect(onPlanChanged).toHaveBeenCalledTimes(2);
     const error = new Error("LINE failed");
-    onTemperatureChanged.mockRejectedValueOnce(error);
-    temperature = 25;
-    await expect(runtime.core.leaveHouse()).resolves.toEqual({ estimatedDryingHours: 1 });
+    onPlanChanged.mockRejectedValueOnce(error);
+    await expect(runtime.core.arriveHouse()).resolves.toEqual({ estimatedDryingHours: 2 });
     expect(onError).toHaveBeenCalledWith(error);
     const sends = remoteControl.send.mock.calls.length;
     await runtime.core.startDrying();
-    expect(remoteControl.send).toHaveBeenCalledTimes(sends); // 通知失敗でもサイクルは維持する。
+    expect(remoteControl.send).toHaveBeenCalledTimes(sends);
+    plan = { mode: "off", estimatedDryingHours: Infinity, presenceMode: "away" };
+    await runtime.core.leaveHouse();
+    expect(onPlanChanged).toHaveBeenLastCalledWith(plan);
+    expect(onPlanChanged.mock.invocationCallOrder.at(-1)).toBeGreaterThan(remoteControl.stop.mock.invocationCallOrder[0]!);
   } finally {
     await runtime.dispose();
   }

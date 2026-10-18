@@ -2,7 +2,7 @@ import { createTask } from "node-cron";
 import { decideNextOperation } from "../drying/index.js";
 import { updateObservedProgress } from "../drying/estimator.js";
 import type { EnvironmentObservation } from "../drying/estimator.js";
-import type { DryingConfig, DryingContext, Operation, PresenceMode } from "../drying/index.js";
+import type { DryingConfig, DryingContext, DryingDecision, Operation, PresenceMode } from "../drying/index.js";
 
 /** LINE や実機の実装には依存せず、起動側から必要な入出力だけを受け取る。 */
 export interface CycleOptions {
@@ -17,6 +17,8 @@ export interface CycleOptions {
   };
   /** LineApi.sendNotificationFinishDrying を渡す。失敗時は次の cron で再試行する。 */
   onFinishDrying(): Promise<void>;
+  /** 送信と計画の確定後に呼ぶ。通知に失敗しても乾燥制御は維持する。 */
+  onPlanChanged?(plan: DryingDecision & { presenceMode: PresenceMode }): Promise<void>;
   /** cron 内の失敗の報告先。handler からの呼び出し失敗は呼び出し元へ返す。 */
   onError(error: unknown): void;
   dryingConfig?: DryingConfig;
@@ -144,6 +146,11 @@ export function createCycle(options: CycleOptions, dependencies: Partial<CycleDe
       stopped: plan.mode === "off",
     };
     await task.start();
+    try {
+      await options.onPlanChanged?.({ ...plan, presenceMode });
+    } catch (error) {
+      options.onError(error);
+    }
     return currentEstimate(running);
   }
 

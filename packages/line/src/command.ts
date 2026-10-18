@@ -1,6 +1,7 @@
 import type { messagingApi } from "@line/bot-sdk";
 import type { CoreApi, DryingEstimate, Image } from "@os/api";
 import {
+  dryingEstimateText,
   laundryPhotoRequestMessage,
   laundryPositionMessage,
   menuGuideMessage,
@@ -10,19 +11,7 @@ import { POSTBACK_DATA } from "./postback-data.js";
 
 function withEstimate(message: string, estimate: DryingEstimate | void): messagingApi.TextMessage {
   if (!estimate) return textMessage(message);
-  if (!Number.isFinite(estimate.estimatedDryingHours)) {
-    return textMessage(`${message}\n現在の条件では乾燥完了までの時間を予測できません。`);
-  }
-  const minutes = Math.max(0, Math.ceil(estimate.estimatedDryingHours * 60));
-  if (minutes === 0) return textMessage(`${message}\n洗濯物は乾燥が完了した見込みです。`);
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  let duration = `${minutes}分`;
-  if (hours > 0) {
-    duration = `${hours}時間`;
-    if (remainder > 0) duration += `${remainder}分`;
-  }
-  return textMessage(`${message}\n乾燥完了までの目安：あと約${duration}です。`);
+  return textMessage(`${message}\n${dryingEstimateText(estimate)}`);
 }
 
 // ボタン（ポストバック）が押されたとき。CoreApiを呼び、返信するメッセージを返す。
