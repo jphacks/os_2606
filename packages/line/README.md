@@ -1,6 +1,6 @@
 # @os/line
 
-LINE Messaging APIのWebhookを受信し、テキストをそのまま返信するBotです。
+LINE Messaging APIのWebhookを受信し、テキストをそのまま返信するBotと、Coreから呼び出す乾燥完了通知APIを提供します。
 `POST /webhook`で署名を検証し、返信が完了したらHTTP 200を返します。
 画像などのテキスト以外のイベントや、返信トークンのないイベントは受信確認だけを行います。
 
@@ -45,6 +45,37 @@ Raspberry Piでのsystemdによる自動起動・デプロイ時の再起動は[
 Botにテキストを送ると同じ内容を返信します。LINE公式アカウント側の自動返信を止める場合は、応答メッセージやあいさつメッセージも無効にしてください。
 
 署名検証には[公式LINE Bot SDKのWebhookミドルウェア](https://line.github.io/line-bot-sdk-nodejs/guide/webhook.html)を使っています。
+
+## Coreから乾燥完了を通知する
+
+`createLineApi(channelAccessToken, userId)`は、`@os/api`の`LineApi`を実装したオブジェクトを返します。
+洗濯を依頼したユーザーのIDを、署名検証済みのWebhookイベントの`source.userId`から取得して作成します。
+その`LineApi`を対象の乾燥処理に紐づけてCoreへ渡し、Coreは乾燥完了時に`sendNotificationFinishDrying()`を呼び出します。
+
+Webhookを処理する側で、通知用APIを作成する例です。
+
+```ts
+import type { webhook } from "@line/bot-sdk";
+import { createLineApi } from "@os/line";
+
+function createDryingNotification(channelAccessToken: string, event: webhook.MessageEvent) {
+  const userId = event.source?.userId;
+  if (!userId) {
+    throw new Error("Webhookイベントに通知先のユーザーIDがありません。");
+  }
+
+  return createLineApi(channelAccessToken, userId);
+}
+```
+
+ユーザーIDはリクエストに紐づく情報として扱います。複数ユーザーからメッセージを受け取っても、すでに作成した`LineApi`の通知先は変わりません。
+WebhookからCoreを呼び出す処理への組み込みは[#16](https://github.com/jphacks/os_2606/issues/16)で行います。
+
+「洗濯物の乾燥が完了しました。」を[プッシュメッセージ](https://line.github.io/line-bot-sdk-nodejs/guide/client.html)として送信するため、Webhookの返信トークンは不要です。
+送信APIの成功を待って`Promise<void>`が完了し、送信に失敗した場合はエラーを呼び出し元へ返します。
+アクセストークンやユーザーIDが空文字・空白のみの場合は、APIの作成時にエラーになります。
+
+通知先のユーザーはBotを友だち追加してください。
 
 ## テスト
 

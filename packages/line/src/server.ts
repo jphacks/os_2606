@@ -1,4 +1,5 @@
 import { loadEnvFile } from "node:process";
+import { mockCore } from "./mock-core.js";
 import { createLineBot } from "./index.js";
 
 try {
@@ -24,9 +25,12 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("PORTには1〜65535の整数を指定してください。");
 }
 
-const server = createLineBot(channelSecret, channelAccessToken).listen(port, () => {
-  console.log(`LINE Botをポート${port}で起動しました。Webhook: /webhook`);
-});
+const server = createLineBot(channelSecret, channelAccessToken, mockCore).listen(
+  port,
+  () => {
+    console.log(`LINE Botをポート${port}で起動しました。Webhook: /webhook`);
+  },
+);
 
 function shutdown(): void {
   server.close(() => {

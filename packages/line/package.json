@@ -12,10 +12,12 @@
   "scripts": {
     "build": "tsc -b",
     "start": "pnpm --workspace-root start",
+    "setup:rich-menu": "node dist/setup-rich-menu.js",
     "test": "vitest run"
   },
   "dependencies": {
     "@line/bot-sdk": "^11.3.0",
+    "@os/api": "workspace:*",
     "@os/core": "workspace:*",
     "express": "^5.3.0"
   },
