@@ -1,3 +1,4 @@
+import { quickReply } from "./command.js";
 import { LineBotClient } from "@line/bot-sdk";
 import type { CoreApi } from "@os/api";
 import { createHmac } from "node:crypto";
@@ -67,15 +68,14 @@ test("接続確認の空イベントを受け付ける", async () => {
   expect(replyMessage).not.toHaveBeenCalled();
 });
 
-test("受信したテキストを改行や絵文字も含めてそのまま返信する", async () => {
-  const text = "こんにちは\nそのまま返信してね 😀";
+test("決まっていない文字には使い方とボタンを返信する", async () => {
   const body = JSON.stringify({
     destination: "test-bot",
     events: [
       {
         type: "message",
         replyToken: "test-reply-token",
-        message: { type: "text", text },
+        message: { type: "text", text: "こんにちは" },
       },
     ],
   });
@@ -83,7 +83,9 @@ test("受信したテキストを改行や絵文字も含めてそのまま返�
   expect(response.status).toBe(200);
   expect(replyMessage).toHaveBeenCalledExactlyOnceWith({
     replyToken: "test-reply-token",
-    messages: [{ type: "text", text }],
+    messages: [
+      { type: "text", text: "下のボタンから選んでください。", quickReply },
+    ],
   });
 });
 
@@ -159,6 +161,6 @@ test("「いってきます」を受け取るとleaveHouseを呼び、いって�
   expect(core.leaveHouse).toHaveBeenCalledOnce();
   expect(replyMessage).toHaveBeenCalledExactlyOnceWith({
     replyToken: "test-reply-token",
-    messages: [{ type: "text", text: "いってらっしゃい！" }],
+    messages: [{ type: "text", text: "いってらっしゃい！", quickReply }],
   });
 });

@@ -1,3 +1,4 @@
+import { handleText, quickReply } from "./command.js";
 import {
   JSONParseError,
   LineBotClient,
@@ -32,14 +33,10 @@ export function createLineBot(
         ) {
           continue;
         }
-        let replyText = event.message.text;
-        if (event.message.text.trim() === "いってきます") {
-          await core.leaveHouse();
-          replyText = "いってらっしゃい！";
-        }
+        const replyText = await handleText(event.message.text, core);
         await client.replyMessage({
           replyToken: event.replyToken,
-          messages: [{ type: "text", text: replyText }],
+          messages: [{ type: "text", text: replyText, quickReply }],
         });
       }
       response.sendStatus(200);
