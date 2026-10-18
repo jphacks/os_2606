@@ -51,6 +51,8 @@ export async function createApplication(config: ApplicationConfig) {
     loadRemoteControl(),
     loadTemperatureSensor(),
   ]);
+  // デバイスの存在だけでなく、属性の読み取り・実測に成功してから公開する。
+  await sensor.measure();
   const line = createLineApi(config.channelAccessToken, config.userId);
   const runtime = createRuntime({
     remoteControl,

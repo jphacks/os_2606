@@ -50,6 +50,12 @@ test("学習データの読み込みに失敗したら仮実装で起動せず�
   expect(hardware.remote.send).not.toHaveBeenCalled();
 });
 
+test("デバイスが存在しても初回測定に失敗したらWebhookを公開しない", async () => {
+  hardware.sensor.measure.mockRejectedValueOnce(new Error("sensor read failed"));
+  await expect(createApplication(readApplicationConfig(env))).rejects.toThrow("sensor read failed");
+  expect(hardware.remote.send).not.toHaveBeenCalled();
+});
+
 test.each(["LINE_USER_ID", "OUTDOOR_TEMPERATURE", "OUTDOOR_HUMIDITY"])("必須設定%sがなければ起動しない", (name) => {
   expect(() => readApplicationConfig({ ...env, [name]: " " })).toThrow(name);
 });
@@ -86,7 +92,7 @@ test("起動時に取得した実機APIにWebhookから到達し、停止後に�
     expect((await send("洗濯したよ")).status).toBe(200);
     expect(hardware.loadRemote).toHaveBeenCalledOnce();
     expect(hardware.loadSensor).toHaveBeenCalledOnce();
-    expect(hardware.sensor.measure).toHaveBeenCalledOnce();
+    expect(hardware.sensor.measure).toHaveBeenCalledTimes(2);
     expect(hardware.remote.supports).toHaveBeenCalled();
     const expected = decideNextOperation({
       indoorTemperature: 24, indoorHumidity: 70, outdoorTemperature: 18, outdoorHumidity: 60,
