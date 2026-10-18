@@ -10,6 +10,11 @@ const io = vi.hoisted(() => ({
 
 vi.mock("node:fs/promises", () => io);
 vi.mock("node:process", () => ({ loadEnvFile: io.loadEnvFile }));
+// Promise版の待機も偽タイマーで進める。
+vi.mock("node:timers/promises", () => ({
+  setTimeout: (milliseconds: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, milliseconds)),
+}));
 
 const directory = "/sys/bus/iio/devices";
 const files = new Map<string, string | Buffer | Error>();
@@ -28,6 +33,7 @@ function addSensor(name: string, gpio: number): string {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers();
   vi.resetAllMocks();
   for (const key of ["IR_RX_GPIO", "IR_TX_GPIO", "DHT_GPIO"]) {
     vi.stubEnv(key, undefined);
@@ -47,7 +53,10 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
+});
 
 test(".envのGPIOでDHT11を選び、温度と相対湿度の単位を変換する", async () => {
   io.loadEnvFile.mockImplementation(() => vi.stubEnv("DHT_GPIO", "23"));
@@ -95,18 +104,77 @@ test("指定GPIOに該当するセンサーが0台または複数台なら拒否
   await expect(loadTemperatureSensor()).rejects.toThrow("2台");
 });
 
-test("読み取り失敗を伝え、次の測定は再試行できる", async () => {
+test.each(["EIO", "EAGAIN", "ETIMEDOUT"])("%sは2秒待ってから取り直す", async (code) => {
   const path = `${directory}/iio:device7/in_temp_input`;
-  const error = Object.assign(new Error("DHT11 read failed"), { code: "EIO" });
   const sensor = await loadTemperatureSensor();
-  files.set(path, error);
-  await expect(sensor.measure()).rejects.toBe(error);
+  io.readFile.mockClear();
+  files.set(path, Object.assign(new Error("DHT11 read failed"), { code }));
+
+  const measurement = sensor.measure();
+  await vi.advanceTimersByTimeAsync(1999);
+  expect(io.readFile).toHaveBeenCalledTimes(1);
+
+  files.set(path, "25000\n");
+  await vi.advanceTimersByTimeAsync(1);
+  expect(await measurement).toEqual({ temperature: 25, humidity: 56.7 });
+  expect(io.readFile).toHaveBeenCalledTimes(3);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("湿度の読み取りに失敗した場合は温度も取り直す", async () => {
+  const path = `${directory}/iio:device7`;
+  const sensor = await loadTemperatureSensor();
+  io.readFile.mockClear();
+  files.set(
+    `${path}/in_humidityrelative_input`,
+    Object.assign(new Error("DHT11 read failed"), { code: "EIO" }),
+  );
+
+  const measurement = sensor.measure();
+  await vi.advanceTimersByTimeAsync(1999);
+  expect(io.readFile).toHaveBeenCalledTimes(2);
+
+  files.set(`${path}/in_temp_input`, "25000\n");
+  files.set(`${path}/in_humidityrelative_input`, "60000\n");
+  await vi.advanceTimersByTimeAsync(1);
+  expect(await measurement).toEqual({ temperature: 25, humidity: 60 });
+  expect(io.readFile).toHaveBeenCalledTimes(4);
+});
+
+test("3回失敗したら最後のエラーを伝え、次の測定は再試行できる", async () => {
+  const sensor = await loadTemperatureSensor();
+  io.readFile.mockClear();
+  const errors = ["EIO", "EAGAIN", "ETIMEDOUT"].map((code) =>
+    Object.assign(new Error(`DHT11 read failed: ${code}`), { code }),
+  );
+  for (const error of errors) {
+    io.readFile.mockRejectedValueOnce(error);
+  }
+
+  const result = expect(sensor.measure()).rejects.toBe(errors[2]);
+  await vi.advanceTimersByTimeAsync(3999);
+  expect(io.readFile).toHaveBeenCalledTimes(2);
+  await vi.advanceTimersByTimeAsync(1);
+  await result;
+  expect(io.readFile).toHaveBeenCalledTimes(3);
+  expect(vi.getTimerCount()).toBe(0);
   expect(io.readFile).not.toHaveBeenCalledWith(
     `${directory}/iio:device7/in_humidityrelative_input`,
     "utf8",
   );
-  files.set(path, "25000\n");
-  expect(await sensor.measure()).toEqual({ temperature: 25, humidity: 56.7 });
+
+  expect(await sensor.measure()).toEqual({ temperature: 23.4, humidity: 56.7 });
+});
+
+test.each(["EACCES", "ENOENT", "EINVAL"])("%sはリトライせずに伝える", async (code) => {
+  const sensor = await loadTemperatureSensor();
+  io.readFile.mockClear();
+  const error = Object.assign(new Error("DHT11 read failed"), { code });
+  files.set(`${directory}/iio:device7/in_temp_input`, error);
+
+  await expect(sensor.measure()).rejects.toBe(error);
+  expect(io.readFile).toHaveBeenCalledTimes(1);
+  expect(vi.getTimerCount()).toBe(0);
 });
 
 test("空の値や不正な測定値を正常値として扱わない", async () => {
@@ -119,6 +187,7 @@ test("空の値や不正な測定値を正常値として扱わない", async ()
   files.set(`${path}/in_temp_input`, "25000\n");
   files.set(`${path}/in_humidityrelative_input`, "101000\n");
   await expect(sensor.measure()).rejects.toThrow("0〜100%");
+  expect(vi.getTimerCount()).toBe(0);
 });
 
 test("権限エラーをセンサー未接続として隠さない", async () => {

@@ -43,7 +43,7 @@ pnpm sensor measure
 {"temperature":26.5,"humidity":39.8}
 ```
 
-読み取りに失敗した場合は、標準エラー出力に原因を表示して終了コード1を返します。
+一時的な読み取りエラーは自動でリトライします。リトライしても失敗した場合や、それ以外のエラーが発生した場合は、標準エラー出力に原因を表示して終了コード1を返します。
 
 ### API
 
@@ -61,8 +61,9 @@ GPIO番号でDHT11を探すため、`iio:device0`などのデバイス番号を�
 実行ユーザーには`/sys/bus/iio/devices`内の該当デバイスの読み取り権限が必要です。
 
 ドライバーは成功した測定値を2秒間保持します。定期測定は2秒以上の間隔を空けてください。
-DHT11は読み取りに失敗することがあり、その場合は`measure()`がrejectします。
-呼び出し側でエラーを処理し、次の測定まで2秒以上空けてください。
+`measure()`は一時的な読み取りエラー（`EIO`・`EAGAIN`・`ETIMEDOUT`）が発生すると、2秒待って温湿度を取り直します。
+初回を含めて最大3回試し、すべて失敗した場合は最後のエラーでrejectします。権限・設定のエラーや不正な測定値はリトライしません。
+rejectした場合は呼び出し側でエラーを処理し、次の測定まで2秒以上空けてください。
 
 ドライバー設定は[Raspberry PiのDHT11 overlay](https://github.com/raspberrypi/linux/blob/rpi-6.18.y/arch/arm/boot/dts/overlays/dht11-overlay.dts)、測定値の単位と保持期間は[LinuxのDHT11ドライバー](https://github.com/raspberrypi/linux/blob/rpi-6.18.y/drivers/iio/humidity/dht11.c)に基づいています。
 
