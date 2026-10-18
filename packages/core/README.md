@@ -1,7 +1,48 @@
 # 室内干しくんの乾燥制御
 
-`@os/core` はHTTP・DB・センサー・RemoteControlに依存しない純粋関数を公開します。
-既存のモノレポ構成に合わせ、実装先は `packages/core/src/drying/` です。
+運転計画の入口は **`@os/core/drying` の `decideNextOperation(context, config?)`** です。
+温湿度・在室状態・乾燥進捗を渡すと、次の評価までの運転計画を同期的に返します。
+同じ入力と設定なら同じ結果を返し、入力や設定を変更しません。
+センサー取得・時刻取得・ファイル読み書き・実機操作は呼び出し側で行います。
+
+公開 API の定義は `src/drying/index.ts`、計画の実装は `src/drying/operation-planner.ts` です。
+`@os/core` からの既存の import も引き続き使えます。
+
+```typescript
+import { decideNextOperation } from "@os/core/drying";
+
+const plan = decideNextOperation({
+  indoorTemperature: 24,
+  indoorHumidity: 70,
+  outdoorTemperature: 18,
+  outdoorHumidity: 60,
+  presenceMode: "home",
+  comfortTemperature: 24,
+  dryingProgress: 0,
+});
+
+// plan.mode: "cool" | "heat" | "dehumidify" | "off"
+// plan.temperature / plan.fanSpeed: 運転時の設定。停止時は省略。
+// plan.nextEvaluationMinutes: この計画を再評価するまでの分数。
+// plan.estimatedProgressGain: その区間の推定乾燥進捗。
+// plan.predictedTemperature / plan.predictedHumidity: 区間終了時の予測。
+// plan.score / plan.reason: 選択した候補の比較コストと判断方針。
+```
+
+返すのは次の区間の計画1件です。複数時間にわたる運転スケジュールではありません。
+入力・設定が不正な場合や、対応する運転候補がない場合は `RangeError` を投げます。
+
+## 設定と補助関数
+
+通常は `decideNextOperation` だけで計画を取得できます。
+候補一覧・評価の内訳が必要な場合は、次の補助関数を利用できます。
+
+| 関数 | 返すもの |
+| --- | --- |
+| `generateOperationCandidates(context, config?)` | 実機の制約に合う運転候補 |
+| `evaluateOperations(context, config?)` | 全候補の予測と比較コスト |
+| `simulateEnvironment(context, operation, config?)` | 指定した運転の環境予測 |
+| `updateObservedProgress(progress, previous, current)` | 実測値から計算した観測進捗 |
 
 ```typescript
 import {
@@ -9,7 +50,7 @@ import {
   DEFAULT_DRYING_CONFIG,
   evaluateOperations,
   generateOperationCandidates,
-} from "@os/core";
+} from "@os/core/drying";
 
 const context = {
   indoorTemperature: 24,
