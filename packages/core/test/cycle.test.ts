@@ -31,6 +31,26 @@ function setup() {
   };
 }
 
+test("試算は観測と進捗を使うが実機・通知・サイクル状態を変更しない", async () => {
+  const f = setup();
+  const before = await f.cycle.simulatePlan();
+  expect(before.initialContext.presenceMode).toBe("home");
+  expect(before.initialContext.dryingProgress).toBe(0);
+  expect(f.options.remoteControl.send).not.toHaveBeenCalled();
+  expect(f.options.remoteControl.stop).not.toHaveBeenCalled();
+  expect(f.task.start).not.toHaveBeenCalled();
+  await f.cycle.leaveHouse();
+  f.setTime(900_000);
+  const running = await f.cycle.simulatePlan();
+  expect(running.initialContext.presenceMode).toBe("away");
+  expect(running.initialContext.dryingProgress).toBeGreaterThan(0);
+  expect(f.options.remoteControl.send).toHaveBeenCalledOnce();
+  expect(f.options.onFinishDrying).not.toHaveBeenCalled();
+  f.setTime(3_600_000);
+  await f.tick();
+  expect(f.options.onFinishDrying).toHaveBeenCalledOnce(); // 試算によって予測終了時刻は変わらない。
+});
+
 test("開始時に予測時間、重複操作には残り時間を返す", async () => {
   const f = setup();
   expect(await f.cycle.arriveHouse()).toBeUndefined();

@@ -59,7 +59,7 @@ export const outingRichMenu: messagingApi.RichMenuRequest = {
   ],
 };
 
-// タブ「洗濯物」：写真を送る／位置を設定／地域を設定
+// タブ「洗濯物」：写真を送る／位置を設定／地域を設定／6時間の運転計画
 export const laundryRichMenu: messagingApi.RichMenuRequest = {
   size: { width: RICH_MENU_WIDTH, height: RICH_MENU_HEIGHT },
   selected: true,
@@ -67,9 +67,10 @@ export const laundryRichMenu: messagingApi.RichMenuRequest = {
   chatBarText: "メニュー",
   areas: [
     ...tabAreas,
-    buttonArea(0, 833, "写真を送る", POSTBACK_DATA.askLaundryPhoto),
-    buttonArea(833, 834, "位置を設定", POSTBACK_DATA.askLaundryPosition),
-    buttonArea(1667, 833, "地域を設定", POSTBACK_DATA.askRegion),
+    buttonArea(0, 625, "写真を送る", POSTBACK_DATA.askLaundryPhoto),
+    buttonArea(625, 625, "位置を設定", POSTBACK_DATA.askLaundryPosition),
+    buttonArea(1250, 625, "地域を設定", POSTBACK_DATA.askRegion),
+    buttonArea(1875, 625, "6時間の運転計画", POSTBACK_DATA.simulateDryingPlan),
   ],
 };
 

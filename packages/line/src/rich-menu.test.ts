@@ -1,3 +1,4 @@
+import { mockCore } from "./mock-core.js";
 import type { LineBotClient, messagingApi } from "@line/bot-sdk";
 import type { CoreApi } from "@os/api";
 import { expect, test, vi } from "vitest";
@@ -11,6 +12,7 @@ import {
 } from "./rich-menu.js";
 
 const core = {
+  simulateDryingPlan: vi.fn(mockCore.simulateDryingPlan),
   startDrying: vi.fn(async () => ({ estimatedDryingHours: 1 })),
   leaveHouse: vi.fn(async () => ({ estimatedDryingHours: 1 })),
   arriveHouse: vi.fn(async () => undefined),
@@ -20,6 +22,13 @@ const core = {
 } satisfies CoreApi;
 
 const menus = [outingRichMenu, laundryRichMenu];
+
+test("洗濯物メニューの右端は6時間の運転計画を実行する", () => {
+  expect(laundryRichMenu.areas?.at(-1)).toMatchObject({
+    bounds: { x: 1875, y: 200, width: 625, height: 643 },
+    action: { type: "postback", label: "6時間の運転計画", data: "simulate-drying-plan" },
+  });
+});
 
 test.each(menus)("「$name」のボタンは画像の範囲に収まっている", (menu) => {
   for (const { bounds } of menu.areas ?? []) {

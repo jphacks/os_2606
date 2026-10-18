@@ -1,11 +1,16 @@
 //返信の見た目を作るファイル
-import type { DryingEstimate } from "@os/api";
+import type { DryingEstimate, DryingSimulation } from "@os/api";
+import { formatPlanSimulation } from "@os/core/drying";
 import type { messagingApi } from "@line/bot-sdk";
 import { POSTBACK_DATA } from "./postback-data.js";
 
 // 普通の文字だけのメッセージ
 export function textMessage(text: string): messagingApi.TextMessage {
   return { type: "text", text };
+}
+
+export function dryingSimulationMessage(simulation: DryingSimulation): messagingApi.TextMessage {
+  return textMessage(formatPlanSimulation(simulation));
 }
 
 // 文字を打たれたときの案内

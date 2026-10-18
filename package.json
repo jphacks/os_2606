@@ -10,6 +10,7 @@
     "preinstall": "npx only-allow pnpm",
     "build": "tsc -b",
     "start": "node packages/line/dist/server.js",
+    "simulate:drying": "pnpm --silent --filter @os/core build && node packages/core/dist/simulate-drying.js",
     "setup:rich-menu": "node packages/line/dist/setup-rich-menu.js",
     "typecheck": "tsc -b --noEmit",
     "clean": "tsc -b --clean",
