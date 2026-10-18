@@ -12,3 +12,7 @@ export interface UpdateHouseConfig {
 export interface GetLaundryPositionFromAC {
   (): Promise<LaundryPosition>;
 }
+
+export interface UpdateLaundryPositionFromAC {
+  (position: LaundryPosition): Promise<void>;
+}
