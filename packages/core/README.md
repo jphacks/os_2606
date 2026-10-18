@@ -136,8 +136,9 @@ const dryingProgress = updateObservedProgress(
 
 ## LINE handler から乾燥サイクルを動かす
 
-`@os/core/cycle` の `createCycle` は、handler から呼ぶ `leaveHouse()`（行ってきます）と
-`arriveHouse()`（ただいま）を返します。メッセージの解析と LINE への送信は handler 側の責務です。
+`@os/core/cycle` の `createCycle` は、handler から呼ぶ `startDrying()`（洗濯したよ）、
+`leaveHouse()`（行ってきます）、`arriveHouse()`（ただいま）を返します。
+メッセージの解析と LINE への送信は handler 側の責務です。
 アプリケーション起動時に1つ作り、handler 間で共有してください。
 
 ```typescript
@@ -158,15 +159,18 @@ const cycle = createCycle({
 });
 
 // LINE handler 内の該当する分岐から呼ぶ。
-await cycle.leaveHouse();
+await cycle.startDrying(); // 「洗濯したよ」で室内モードから開始。
+await cycle.leaveHouse(); // 洗濯済みとして外出モードで開始、または乾燥中のモード切り替え。
 await cycle.arriveHouse();
 
 // アプリケーション終了時。
 await cycle.dispose();
 ```
 
-初回の外出・帰宅で乾燥進捗0から運転を開始します。在室状態が変わると実測温湿度から
-進捗を引き継いで再計画します。同じ在室状態の通知は重複として扱い、終了時刻を延長しません。
+「洗濯したよ」で室内モード・乾燥進捗0から運転を開始します。「行ってきます」は洗濯済みとして扱い、
+未開始・完了後なら外出モード・進捗0から開始します。乾燥中に在室状態が変わると
+実測温湿度から進捗を引き継いで再計画します。開始前・完了後の帰宅では運転を開始しません。
+乾燥中の「洗濯したよ」や同じ在室状態の通知は重複として扱い、終了時刻を延長しません。
 予測終了時刻を毎分 cron（`* * * * *`）で確認し、エアコン停止後に完了コールバックを呼びます。
 通知は予測時刻以降の次の cron 実行時です。Infinity の予測では通知しません。
 停止・通知の失敗は `onError` に渡し、次の cron で再試行します。停止済みなら通知だけを再試行します。
@@ -174,7 +178,8 @@ handler からの取得・送信エラーは handler に返します。通知先
 再試行によって通知が重複する可能性があります。
 
 状態はメモリ内です。単一プロセスで常駐させる必要があり、再起動時には復元されません。
-完了後は次の外出・帰宅で新しいサイクルを開始します。`dispose()` は cron だけを破棄します。
+完了後は次の「洗濯したよ」または「行ってきます」で新しいサイクルを開始します。
+`dispose()` は cron だけを破棄します。
 
 テストでは入出力に加えて、第2引数で時計・予測・スケジューラを個別に DI できます。
 モジュールのモックや実時間の待機は不要です。具体例は `test/cycle.test.ts` を参照してください。
@@ -192,7 +197,7 @@ const cycle = createCycle(options, {
     return { start() {}, stop() {}, destroy() {} };
   },
 });
-await cycle.leaveHouse();
+await cycle.startDrying();
 now = 3_600_000;
 await tick(); // モックの停止・完了コールバックを検証できる。
 await cycle.dispose();

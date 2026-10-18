@@ -22,9 +22,13 @@ export interface CycleOptions {
   dryingConfig?: DryingConfig;
 }
 
-/** 同じインスタンスを handler 間で共有する。各メソッドは CoreApi と同じ形で呼べる。 */
+/** 同じインスタンスを handler 間で共有する。 */
 export interface Cycle {
+  /** 「洗濯したよ」で室内モード・進捗0から開始する。乾燥中の重複操作は無視する。 */
+  startDrying(): Promise<void>;
+  /** 洗濯済みとして外出モードで開始する。乾燥中なら進捗を引き継いで切り替える。 */
   leaveHouse(): Promise<void>;
+  /** 乾燥中の運転を室内モードに切り替える。未開始・完了後は何もしない。 */
   arriveHouse(): Promise<void>;
   /** アプリケーション終了時に cron を破棄する。エアコンは停止しない。 */
   dispose(): Promise<void>;
@@ -53,7 +57,9 @@ interface RunningCycle {
 }
 
 /**
- * handler が外出・帰宅を通知すると運転計画を実機へ送り、cron で予測終了を通知する。
+ * 「洗濯したよ」で室内モード、「行ってきます」で外出モードの乾燥を開始する。
+ * 乾燥中の外出・帰宅では進捗を引き継いで再計画する。
+ * cron で予測終了を通知する。
  * 状態はメモリ内で保持するため、単一プロセスで利用する。再起動時には復元しない。
  */
 export function createCycle(options: CycleOptions, dependencies: Partial<CycleDependencies> = {}): Cycle {
@@ -93,55 +99,65 @@ export function createCycle(options: CycleOptions, dependencies: Partial<CycleDe
     }
   });
 
+  async function planOperation(presenceMode: PresenceMode): Promise<void> {
+    const context = await options.getContext();
+    const observedAt = now();
+    const observation: EnvironmentObservation = {
+      temperature: context.indoorTemperature,
+      humidity: context.indoorHumidity,
+      observedAt,
+    };
+    let progress = 0;
+    if (running) {
+      progress = updateObservedProgress(running.progress, running.observation, observation);
+    }
+    const plan = decide({ ...context, presenceMode, dryingProgress: progress }, options.dryingConfig);
+    switch (plan.mode) {
+      case "off":
+        await options.remoteControl.stop();
+        break;
+      case "cool":
+      case "heat":
+      case "dehumidify":
+        await options.remoteControl.send({
+          acMode: plan.mode,
+          temperature: plan.temperature,
+          fanSpeed: plan.fanSpeed,
+        });
+        break;
+      default: {
+        const exhaustiveCheck: never = plan;
+        return exhaustiveCheck;
+      }
+    }
+    running = {
+      presenceMode,
+      progress,
+      observation,
+      finishesAt: now() + plan.estimatedDryingHours * 3_600_000,
+      stopped: plan.mode === "off",
+    };
+    await task.start();
+  }
+
   function changePresence(presenceMode: PresenceMode): Promise<void> {
     return enqueue(async () => {
       if (disposed) throw new Error("乾燥サイクルは破棄されています。");
-      // 完了待ちの通知を新しい計画で上書きしない。
       await finishIfDue();
+      if (!running && presenceMode === "home") return;
       if (running?.presenceMode === presenceMode) return;
-
-      const context = await options.getContext();
-      const observedAt = now();
-      const observation: EnvironmentObservation = {
-        temperature: context.indoorTemperature,
-        humidity: context.indoorHumidity,
-        observedAt,
-      };
-      let progress = 0;
-      if (running) {
-        progress = updateObservedProgress(running.progress, running.observation, observation);
-      }
-      const plan = decide({ ...context, presenceMode, dryingProgress: progress }, options.dryingConfig);
-      switch (plan.mode) {
-        case "off":
-          await options.remoteControl.stop();
-          break;
-        case "cool":
-        case "heat":
-        case "dehumidify":
-          await options.remoteControl.send({
-            acMode: plan.mode,
-            temperature: plan.temperature,
-            fanSpeed: plan.fanSpeed,
-          });
-          break;
-        default: {
-          const exhaustiveCheck: never = plan;
-          return exhaustiveCheck;
-        }
-      }
-      running = {
-        presenceMode,
-        progress,
-        observation,
-        finishesAt: now() + plan.estimatedDryingHours * 3_600_000,
-        stopped: plan.mode === "off",
-      };
-      await task.start();
+      await planOperation(presenceMode);
     });
   }
 
   return {
+    startDrying: () => enqueue(async () => {
+      if (disposed) throw new Error("乾燥サイクルは破棄されています。");
+      // 通知待ちのサイクルを新しい洗濯で上書きしない。
+      await finishIfDue();
+      if (running) return;
+      await planOperation("home");
+    }),
     leaveHouse: () => changePresence("away"),
     arriveHouse: () => changePresence("home"),
     dispose: () => enqueue(async () => {
