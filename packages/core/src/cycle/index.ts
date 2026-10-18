@@ -1,8 +1,6 @@
 import { createTask } from "node-cron";
 import { decideNextOperation } from "../drying/index.js";
 import { updateObservedProgress } from "../drying/estimator.js";
-import { simulateDryingPlan } from "../drying/plan-simulator.js";
-import type { PlanSimulation } from "../drying/plan-simulator.js";
 import type { EnvironmentObservation } from "../drying/estimator.js";
 import type { DryingConfig, DryingContext, DryingDecision, Operation, PresenceMode } from "../drying/index.js";
 
@@ -32,7 +30,6 @@ export interface CycleEstimate {
 
 /** 同じインスタンスを handler 間で共有する。 */
 export interface Cycle {
-  simulatePlan(): Promise<PlanSimulation>;
   /** 「洗濯したよ」で室内モード・進捗0から開始する。乾燥中の重複操作は無視する。 */
   startDrying(): Promise<CycleEstimate>;
   /** 洗濯済みとして外出モードで開始する。乾燥中なら進捗を引き継いで切り替える。 */
@@ -172,20 +169,6 @@ export function createCycle(options: CycleOptions, dependencies: Partial<CycleDe
   }
 
   return {
-    simulatePlan: () => enqueue(async () => {
-      if (disposed) throw new Error("乾燥サイクルは破棄されています。");
-      const context = await options.getContext();
-      const observation = {
-        temperature: context.indoorTemperature, humidity: context.indoorHumidity, observedAt: now(),
-      };
-      let presenceMode: PresenceMode = "home";
-      let dryingProgress = 0;
-      if (running) {
-        presenceMode = running.presenceMode;
-        dryingProgress = updateObservedProgress(running.progress, running.observation, observation);
-      }
-      return simulateDryingPlan({ ...context, presenceMode, dryingProgress }, options.dryingConfig);
-    }),
     startDrying: () => enqueue(async () => {
       // 通知待ちのサイクルを新しい洗濯で上書きしない。
       await prepareOperation();
