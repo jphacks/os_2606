@@ -1,0 +1,4 @@
+temperature_c,a_per_RH_percent,b_mg_cm2_min,source,source_location,value_type
+10,0.006,0.56,https://www.jstage.jst.go.jp/article/senshoshi1960/15/2/15_2_59/_pdf,Table 2 (page 24),published fitted coefficients
+20,0.007,0.68,https://www.jstage.jst.go.jp/article/senshoshi1960/15/2/15_2_59/_pdf,Table 2 (page 24),published fitted coefficients
+30,0.011,1.04,https://www.jstage.jst.go.jp/article/senshoshi1960/15/2/15_2_59/_pdf,Table 2 (page 24),published fitted coefficients

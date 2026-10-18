@@ -1,0 +1,11 @@
+study,case_id,indoor_temp_c,indoor_rh_pct,air_transport,drying_hours,mass_kg,clothes_count,source,temperature_window
+Sato_2024,1,20.7,42.2,1,6.716666666666667,2.01,30,https://doi.org/10.18948/shasetaikai.2024.06.0_113,mean_during_drying
+Sato_2024,1,18.7,48.1,0,10.2,2.01,30,https://doi.org/10.18948/shasetaikai.2024.06.0_113,mean_during_drying
+Sato_2024,2,17.8,34.0,1,4.95,2.01,30,https://doi.org/10.18948/shasetaikai.2024.06.0_113,mean_during_drying
+Sato_2024,2,15.8,35.2,0,8.516666666666667,2.01,30,https://doi.org/10.18948/shasetaikai.2024.06.0_113,mean_during_drying
+Sato_2024,3,19.5,55.8,1,11.0,2.01,30,https://doi.org/10.18948/shasetaikai.2024.06.0_113,mean_during_drying
+Sato_2024,3,18.5,57.7,0,15.8,2.01,30,https://doi.org/10.18948/shasetaikai.2024.06.0_113,mean_during_drying
+Sato_2024,4,18.4,46.2,1,5.516666666666667,2.01,30,https://doi.org/10.18948/shasetaikai.2024.06.0_113,mean_during_drying
+Sato_2024,4,17.7,50.6,0,9.666666666666666,2.01,30,https://doi.org/10.18948/shasetaikai.2024.06.0_113,mean_during_drying
+Sato_2024,5,21.6,54.7,1,8.783333333333333,2.01,30,https://doi.org/10.18948/shasetaikai.2024.06.0_113,mean_during_drying
+Sato_2024,5,21.1,56.6,0,11.3,2.01,30,https://doi.org/10.18948/shasetaikai.2024.06.0_113,mean_during_drying

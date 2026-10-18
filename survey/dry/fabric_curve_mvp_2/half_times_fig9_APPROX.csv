@@ -1,0 +1,13 @@
+temperature_c,humidity_pct,half_time_min,fabric_graph_symbol,source_figure,data_quality
+10,10,5.4,C_open_circle,Fig9,rough_visual_reading_uncertainty_approx_1min
+10,30,6.3,C_open_circle,Fig9,rough_visual_reading_uncertainty_approx_1min
+10,50,8.0,C_open_circle,Fig9,rough_visual_reading_uncertainty_approx_1min
+10,70,8.1,C_open_circle,Fig9,rough_visual_reading_uncertainty_approx_1min
+20,10,1.8,C_open_circle,Fig9,rough_visual_reading_uncertainty_approx_0.5min
+20,30,2.0,C_open_circle,Fig9,rough_visual_reading_uncertainty_approx_0.5min
+20,50,2.3,C_open_circle,Fig9,rough_visual_reading_uncertainty_approx_0.5min
+20,70,3.6,C_open_circle,Fig9,rough_visual_reading_uncertainty_approx_0.5min
+30,10,1.6,C_open_circle,Fig9,rough_visual_reading_uncertainty_approx_0.5min
+30,30,1.8,C_open_circle,Fig9,rough_visual_reading_uncertainty_approx_0.5min
+30,50,2.1,C_open_circle,Fig9,rough_visual_reading_uncertainty_approx_0.5min
+30,70,3.0,C_open_circle,Fig9,rough_visual_reading_uncertainty_approx_0.5min
