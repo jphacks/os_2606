@@ -1,5 +1,11 @@
 # サンプル（プロダクト名）
 
+## Raspberry Piへの自動デプロイ
+
+`main`更新時にGitHub ActionsからTailscale経由でビルド済みコードを配布し、LINEサーバーをsystemdで再起動します。
+初回のPi設定とActionsのVariables・OIDC認証は[デプロイ手順](docs/raspberry-pi-deployment.md)を参照してください。
+GPIOとLINEの認証情報は、Piでは`/opt/os_2606/shared/.env`、ローカルではルートの`.env`にまとめて設定します。[設定例](.env.example)のLINE認証情報2項目を埋めれば、ほかは既定値で起動できます。
+
 [![IMAGE ALT TEXT HERE](https://jphacks.com/wp-content/uploads/2026/07/IMG_5316.png)](https://www.youtube.com/watch?v=piaNsc6ilBI)
 
 ## 製品概要

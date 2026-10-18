@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "start": "node dist/server.js",
+    "start": "pnpm --workspace-root start",
     "test": "vitest run"
   },
   "dependencies": {

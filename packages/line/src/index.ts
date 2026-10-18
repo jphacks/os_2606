@@ -7,6 +7,10 @@ export function createLineBot(channelSecret: string, channelAccessToken: string)
   const app = express();
   const client = LineBotClient.fromChannelAccessToken({ channelAccessToken });
 
+  app.get("/healthz", (_request, response) => {
+    response.status(200).type("text/plain").send("ok");
+  });
+
   app.post("/webhook", middleware({ channelSecret }), async (request, response) => {
     const body: webhook.CallbackRequest = request.body;
     for (const event of body.events) {

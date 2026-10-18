@@ -9,6 +9,7 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "build": "tsc -b",
+    "start": "node packages/line/dist/server.js",
     "typecheck": "tsc -b --noEmit",
     "clean": "tsc -b --clean",
     "test": "vitest run --passWithNoTests && pnpm test:ir",
