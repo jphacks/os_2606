@@ -16,7 +16,7 @@ export const decideWindDirectionVertical = (acMode: AcMode): WindDirectionVertic
 
 // 水平方向の風向きを決定する関数
 // 家の設定値より、エアコンと洗濯物の位置関係を用いて、洗濯物のある方向へ風を送る
-export const decideWindDirectionHorizontal = async (laundryPositionFromAC: LaundryPosition): Promise<WindDirectionHorizontal> => {
+export const decideWindDirectionHorizontal = (laundryPositionFromAC: LaundryPosition): WindDirectionHorizontal => {
   switch (laundryPositionFromAC) {
     case "left":
       return "left";

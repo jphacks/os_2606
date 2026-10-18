@@ -11,7 +11,7 @@ test.each([
 
 test.each(["left", "center", "right"] as const)(
   "水平方向: 洗濯物が %s にあればその方向に風を送る",
-  async (position) => {
-    expect(await decideWindDirectionHorizontal(position)).toBe(position);
+  (position) => {
+    expect(decideWindDirectionHorizontal(position)).toBe(position);
   },
 );
