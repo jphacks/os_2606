@@ -24,6 +24,13 @@ test("ユーザーIDの指定なしで友だち全員に乾燥完了を一斉配
   expect(pushMessage).not.toHaveBeenCalled();
 });
 
+test("設定温度を友だち全員に通知する", async () => {
+  await createLineApi("test-token").sendNotificationTemperatureChanged(26.5);
+  expect(broadcast).toHaveBeenCalledExactlyOnceWith({
+    messages: [{ type: "text", text: "エアコンの設定温度を26.5℃にしました。" }],
+  });
+});
+
 test("一斉配信に失敗した場合はエラーを返して再試行できる", async () => {
   const error = new Error("broadcast failed");
   broadcast.mockRejectedValueOnce(error);

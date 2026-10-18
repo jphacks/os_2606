@@ -1,5 +1,5 @@
 import type { messagingApi } from "@line/bot-sdk";
-import type { CoreApi, Image } from "@os/api";
+import type { CoreApi, DryingEstimate, Image } from "@os/api";
 import {
   laundryPhotoRequestMessage,
   laundryPositionMessage,
@@ -7,6 +7,23 @@ import {
   textMessage,
 } from "./messages.js";
 import { POSTBACK_DATA } from "./postback-data.js";
+
+function withEstimate(message: string, estimate: DryingEstimate | void): messagingApi.TextMessage {
+  if (!estimate) return textMessage(message);
+  if (!Number.isFinite(estimate.estimatedDryingHours)) {
+    return textMessage(`${message}\n現在の条件では乾燥完了までの時間を予測できません。`);
+  }
+  const minutes = Math.max(0, Math.ceil(estimate.estimatedDryingHours * 60));
+  if (minutes === 0) return textMessage(`${message}\n洗濯物は乾燥が完了した見込みです。`);
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  let duration = `${minutes}分`;
+  if (hours > 0) {
+    duration = `${hours}時間`;
+    if (remainder > 0) duration += `${remainder}分`;
+  }
+  return textMessage(`${message}\n乾燥完了までの目安：あと約${duration}です。`);
+}
 
 // ボタン（ポストバック）が押されたとき。CoreApiを呼び、返信するメッセージを返す。
 // 返信しないときは空の配列を返す。
@@ -16,11 +33,9 @@ export async function handlePostback(
 ): Promise<messagingApi.Message[]> {
   switch (data) {
     case POSTBACK_DATA.leaveHouse:
-      await core.leaveHouse();
-      return [textMessage("いってらっしゃい！\n洗濯物の乾燥を始めます。")];
+      return [withEstimate("いってらっしゃい！\n洗濯物の乾燥を始めます。", await core.leaveHouse())];
     case POSTBACK_DATA.arriveHouse:
-      await core.arriveHouse();
-      return [textMessage("おかえりなさい！")];
+      return [withEstimate("おかえりなさい！", await core.arriveHouse())];
     case POSTBACK_DATA.askLaundryPhoto:
       return [laundryPhotoRequestMessage()];
     case POSTBACK_DATA.askLaundryPosition:
@@ -49,8 +64,7 @@ export async function handlePostback(
 export async function handleText(text: string, core: CoreApi): Promise<messagingApi.Message[]> {
   switch (text.trim()) {
     case "洗濯したよ":
-      await core.startDrying();
-      return [textMessage("乾燥を開始しました！")];
+      return [withEstimate("乾燥を開始しました！", await core.startDrying())];
     default:
       return [menuGuideMessage()];
   }
@@ -61,6 +75,5 @@ export async function handleImage(
   image: Image,
   core: CoreApi,
 ): Promise<messagingApi.Message[]> {
-  await core.hangLaundryEvidence(image);
-  return [textMessage("洗濯物の写真を受け取りました。")];
+  return [withEstimate("洗濯物の写真を受け取りました。", await core.hangLaundryEvidence(image))];
 }

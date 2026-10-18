@@ -14,10 +14,10 @@ const getMessageContent = vi.spyOn(
   "getMessageContentWithHttpInfo",
 );
 const core = {
-  startDrying: vi.fn(async () => {}),
-  leaveHouse: vi.fn(async () => {}),
-  arriveHouse: vi.fn(async () => {}),
-  hangLaundryEvidence: vi.fn(async () => {}),
+  startDrying: vi.fn(async () => ({ estimatedDryingHours: 1 })),
+  leaveHouse: vi.fn(async () => ({ estimatedDryingHours: 1 })),
+  arriveHouse: vi.fn(async () => undefined),
+  hangLaundryEvidence: vi.fn(async () => ({ estimatedDryingHours: 1 })),
   laundryPositionFromAC: vi.fn(async () => {}),
   setUpHouseConfig: vi.fn(async () => {}),
 } satisfies CoreApi;
@@ -174,7 +174,7 @@ test("「いってきます」ボタンを押すとleaveHouseを呼び、返信�
   expect(replyMessage).toHaveBeenCalledExactlyOnceWith({
     replyToken: "test-reply-token",
     messages: [
-      { type: "text", text: "いってらっしゃい！\n洗濯物の乾燥を始めます。" },
+      { type: "text", text: "いってらっしゃい！\n洗濯物の乾燥を始めます。\n乾燥完了までの目安：あと約1時間です。" },
     ],
   });
 });
@@ -221,6 +221,6 @@ test("写真を受け取るとダウンロードしてhangLaundryEvidenceに渡�
   });
   expect(replyMessage).toHaveBeenCalledExactlyOnceWith({
     replyToken: "test-reply-token",
-    messages: [{ type: "text", text: "洗濯物の写真を受け取りました。" }],
+    messages: [{ type: "text", text: "洗濯物の写真を受け取りました。\n乾燥完了までの目安：あと約1時間です。" }],
   });
 });

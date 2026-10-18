@@ -4,12 +4,15 @@ import type { CoreApi } from "@os/api";
 export const mockCore: CoreApi = {
   async startDrying() {
     console.log("[core] startDrying");
+    return { estimatedDryingHours: Infinity };
   },
   async leaveHouse() {
     console.log("[core] leaveHouse");
+    return { estimatedDryingHours: Infinity };
   },
   async arriveHouse() {
     console.log("[core] arriveHouse");
+    return undefined;
   },
   async hangLaundryEvidence(image) {
     console.log(
@@ -17,6 +20,7 @@ export const mockCore: CoreApi = {
       image.mimeType,
       image.data.byteLength,
     );
+    return { estimatedDryingHours: Infinity };
   },
   async laundryPositionFromAC(position) {
     console.log("[core] laundryPositionFromAC", position);

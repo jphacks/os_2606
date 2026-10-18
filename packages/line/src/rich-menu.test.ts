@@ -11,10 +11,10 @@ import {
 } from "./rich-menu.js";
 
 const core = {
-  startDrying: vi.fn(async () => {}),
-  leaveHouse: vi.fn(async () => {}),
-  arriveHouse: vi.fn(async () => {}),
-  hangLaundryEvidence: vi.fn(async () => {}),
+  startDrying: vi.fn(async () => ({ estimatedDryingHours: 1 })),
+  leaveHouse: vi.fn(async () => ({ estimatedDryingHours: 1 })),
+  arriveHouse: vi.fn(async () => undefined),
+  hangLaundryEvidence: vi.fn(async () => ({ estimatedDryingHours: 1 })),
   laundryPositionFromAC: vi.fn(async () => {}),
   setUpHouseConfig: vi.fn(async () => {}),
 } satisfies CoreApi;
