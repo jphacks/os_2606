@@ -37,7 +37,7 @@ export function createRuntime(
         await updateHouseConfig({ ...(await getHouseConfig()), region });
       },
       async hangLaundryEvidence() {
-        await cycle.startDrying();
+        return cycle.startDrying();
       },
     },
     dispose: () => cycle.dispose(),

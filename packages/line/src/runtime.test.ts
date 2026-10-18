@@ -25,7 +25,9 @@ test("LINEコマンドから観測・実機操作・停止・完了通知まで�
     },
   });
   try {
-    await handleText("洗濯したよ", runtime.core);
+    expect(await handleText("洗濯したよ", runtime.core)).toEqual([
+      { type: "text", text: "乾燥を開始しました！\n乾燥完了までの目安：あと約1時間です。" },
+    ]);
     expect(sensor.measure).toHaveBeenCalledOnce();
     expect(decide).toHaveBeenLastCalledWith({
       indoorTemperature: 24, indoorHumidity: 70,
@@ -34,9 +36,13 @@ test("LINEコマンドから観測・実機操作・停止・完了通知まで�
     }, undefined);
     expect(remoteControl.send).toHaveBeenCalledExactlyOnceWith({ acMode: "heat", temperature: 26, fanSpeed: "high" });
     now = 600_000;
-    await handlePostback(POSTBACK_DATA.leaveHouse, runtime.core);
+    expect(await handlePostback(POSTBACK_DATA.leaveHouse, runtime.core)).toEqual([
+      { type: "text", text: "いってらっしゃい！\n洗濯物の乾燥を始めます。\n乾燥完了までの目安：あと約1時間です。" },
+    ]);
     expect(decide.mock.calls.at(-1)?.[0]).toMatchObject({ presenceMode: "away" });
-    await handlePostback(POSTBACK_DATA.arriveHouse, runtime.core);
+    expect(await handlePostback(POSTBACK_DATA.arriveHouse, runtime.core)).toEqual([
+      { type: "text", text: "おかえりなさい！\n乾燥完了までの目安：あと約1時間です。" },
+    ]);
     expect(decide.mock.calls.at(-1)?.[0]).toMatchObject({ presenceMode: "home" });
     now += 3_600_000;
     await tick();

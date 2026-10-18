@@ -27,19 +27,24 @@ export interface Image {
   mimeType: string;
 }
 
+export interface DryingEstimate {
+  /** 残り乾燥時間（時間）。予測できない場合はInfinity。 */
+  estimatedDryingHours: number;
+}
+
 /** LINEから呼び出す、coreが提供するAPI。 */
 export interface CoreApi {
   /** 洗濯物を干し、在宅モードで乾燥を開始する。 */
-  startDrying(): Promise<void>;
+  startDrying(): Promise<DryingEstimate | void>;
 
   /** 外出を通知する。 */
-  leaveHouse(): Promise<void>;
+  leaveHouse(): Promise<DryingEstimate | void>;
 
   /** 帰宅ボタンが押されたことを通知する。 */
-  arriveHouse(): Promise<void>;
+  arriveHouse(): Promise<DryingEstimate | void>;
 
   /** 洗濯物を干したことを画像で伝える。 */
-  hangLaundryEvidence(image: Image): Promise<void>;
+  hangLaundryEvidence(image: Image): Promise<DryingEstimate | void>;
 
   /** エアコンから見た洗濯物の位置を伝える。 */
   laundryPositionFromAC(position: "left" | "center" | "right"): Promise<void>;
