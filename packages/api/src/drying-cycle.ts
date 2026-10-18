@@ -131,7 +131,7 @@ export async function runDryingCycle(deps: DryingCycleDependencies, options: Dry
         case "off": await deps.remoteControl.stop(); break;
         case "cool":
         case "heat":
-        case "dry": {
+        case "dehumidify": {
           const message: AcMessage = {
             acMode: operation.mode,
             temperature: operation.temperature,
