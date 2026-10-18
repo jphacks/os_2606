@@ -36,7 +36,7 @@ export async function learnRemote(abortSignal?: AbortSignal): Promise<LearnedRem
   return saveSignal(signal);
 }
 
-export async function loadRemoteControl(): Promise<RemoteControl & { supports(message: AcMessage): boolean }> {
+export async function loadRemoteControl(): Promise<RemoteControl> {
   const remoteFile = remotePath();
   const savedData = await readFile(remoteFile, "utf8");
   let learnedRemote = validateRemote(JSON.parse(savedData));

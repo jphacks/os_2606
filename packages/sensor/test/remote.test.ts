@@ -7,7 +7,7 @@ import { parseFlipper } from "../src/flipper.js";
 import { identify } from "../src/protocol.js";
 import { encodeWave } from "../src/protocols/common.js";
 import { sharp104 } from "../src/protocols/sharp.js";
-import type { AcMessage } from "@os/api";
+import type { AcMessage, RemoteControl } from "@os/api";
 import type { IrSignal } from "../src/types.js";
 import { capture112, capture112State } from "./fixtures.js";
 
@@ -112,7 +112,7 @@ test("learn, persist, reload and serialize send/off; failed sends do not block l
     const customFile = join(directory, "custom/remote.json");
     process.env.IR_REMOTE_PATH = customFile;
     await saveSignal(capture112);
-    const customRemote = await loadRemoteControl();
+    const customRemote: RemoteControl = await loadRemoteControl();
     const before = sent.length;
     const stored = await readFile(customFile, "utf8");
     assert.equal(customRemote.supports({ acMode: "dehumidify", temperature: 24, fanSpeed: "low" }), true);

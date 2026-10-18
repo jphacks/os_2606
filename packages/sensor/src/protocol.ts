@@ -66,7 +66,10 @@ export function validateRemote(value: unknown): LearnedRemote {
         detectedModel = "a705";
       }
     }
-    const model = remote.sharpModel ?? detectedModel;
+    let model = remote.sharpModel;
+    if (!Object.hasOwn(remote, "sharpModel")) {
+      model = detectedModel;
+    }
     if (
       (model !== "a705" && model !== "a903" && model !== "a907") ||
       (model === "a907") !== (detectedModel === "a907") ||

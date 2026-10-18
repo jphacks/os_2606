@@ -128,6 +128,11 @@ test("Sharp cooling-only variants use their own fan levels and reject heating", 
     const dry = identify(encode(remote, { acMode: "dehumidify", temperature: 24 }));
     assert.equal(dry.state[4], 0);
     assert.equal(dry.state[6]! & 0x73, 0x23);
+    assert.equal(validateRemote({ version: 1, protocol: "sharp104", state }).sharpModel, remote.sharpModel);
+    assert.equal(validateRemote({ ...dry, sharpModel: remote.sharpModel }).sharpModel, remote.sharpModel);
+    for (const sharpModel of [null, undefined]) {
+      assert.throws(() => validateRemote({ ...dry, sharpModel }), /Sharp model/);
+    }
     assert.throws(() => validateRemote({ ...remote, sharpModel: "a907" }), /Sharp model/);
   }
   assert.throws(() => validateRemote({ ...learned("sharp104"), sharpModel: "unknown" }), /Sharp model/);

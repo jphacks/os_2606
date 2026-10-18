@@ -142,6 +142,9 @@ const message: AcMessage = {
   // windDirectionVertical: "up",       // up | middle | down
   // windDirectionHorizontal: "center", // left | center | right
 };
+if (!remote.supports(message)) {
+  throw new Error("学習したリモコンでは、この設定を送信できません。");
+}
 await remote.send(message);
 await remote.stop();
 ```

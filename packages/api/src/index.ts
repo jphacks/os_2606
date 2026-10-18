@@ -9,6 +9,8 @@ export interface AcMessage {
 }
 
 export interface RemoteControl {
+  /** 送信・保存せずに、指定した設定の信号を生成できるか確認する。 */
+  supports(message: AcMessage): boolean;
   stop(): Promise<void>;
   send(message: AcMessage): Promise<void>;
 }
