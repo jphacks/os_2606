@@ -6,7 +6,7 @@ export const BUTTON_TEXTS = [
   "いってきます",
   "ただいま",
   "左",
-  "中央",
+  "正面",
   "右",
 ] as const;
 
@@ -29,13 +29,13 @@ export async function handleText(text: string, core: CoreApi): Promise<string> {
       return "おかえりなさい！";
     case "左":
       await core.laundryPositionFromAC("left");
-      return "洗濯物の位置を「左」にしました。";
-    case "中央":
+      return "洗濯物の位置を左にしました。";
+    case "正面":
       await core.laundryPositionFromAC("center");
-      return "洗濯物の位置を「中央」にしました。";
+      return "洗濯物の位置を正面にしました。";
     case "右":
       await core.laundryPositionFromAC("right");
-      return "洗濯物の位置を「右」にしました。";
+      return "洗濯物の位置を右にしました。";
     default:
       return "下のボタンから選んでください。";
   }

@@ -26,7 +26,7 @@ test("「ただいま」でarriveHouseを呼ぶ", async () => {
 
 test.each([
   ["左", "left"],
-  ["中央", "center"],
+  ["正面", "center"],
   ["右", "right"],
 ] as const)("「%s」で洗濯物の位置を %s にする", async (text, position) => {
   await handleText(text, core);
