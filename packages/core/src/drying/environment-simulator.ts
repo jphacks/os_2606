@@ -41,7 +41,8 @@ export function simulateEnvironment(context: DryingContext, operation: Operation
     let removalRate = 0;
     let target = temperature;
     if (operation.mode !== "off") {
-      const multiplier = coefficients.fanMultiplier[operation.fanSpeed];
+      // 自動除湿の風量は実測できないため、未校正モデルでは中風量相当と仮定する。
+      const multiplier = coefficients.fanMultiplier[operation.fanSpeed ?? "medium"];
       acRate = coefficients.temperatureRate[operation.mode] * multiplier;
       removalRate = coefficients.dehumidificationRate[operation.mode] * multiplier;
       switch (operation.mode) {

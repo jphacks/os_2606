@@ -17,6 +17,34 @@ const coolingOnly: DryingConfig = {
 };
 
 describe("運転計画の完了予測と採点の回帰テスト", () => {
+  it("自動風量しか受け付けない機種でも除湿を計画し、風量を省略する", () => {
+    const context: DryingContext = {
+      indoorTemperature: 24, indoorHumidity: 70, outdoorTemperature: 18, outdoorHumidity: 60, presenceMode: "home",
+    };
+    const config: DryingConfig = {
+      ...DEFAULT_DRYING_CONFIG,
+      capabilities: { ...DEFAULT_DRYING_CONFIG.capabilities, allowAutomaticDehumidify: true },
+      isOperationSupported: (operation) => operation.mode === "dehumidify" && !("fanSpeed" in operation),
+    };
+    const plan = decideNextOperation(context, config);
+    expect(plan).toMatchObject({ mode: "dehumidify", temperature: 24 });
+    expect(plan).not.toHaveProperty("fanSpeed");
+    expect(Number.isFinite(plan.estimatedDryingHours)).toBe(true);
+    expect(simulateEnvironment(context, plan, config)).toEqual(
+      simulateEnvironment(context, { mode: "dehumidify", temperature: 24, fanSpeed: "medium" }),
+    );
+    expect(() => decideNextOperation(context, {
+      ...config, capabilities: { ...config.capabilities, allowAutomaticDehumidify: false },
+    })).toThrow("No supported operation candidates");
+  });
+  it("実機が送信できる設定だけから選び、候補がなければエラーにする", () => {
+    const config: DryingConfig = {
+      ...DEFAULT_DRYING_CONFIG,
+      isOperationSupported: (operation) => operation.mode === "heat" && operation.temperature === 24 && operation.fanSpeed === "low",
+    };
+    expect(decideNextOperation(summer, config)).toMatchObject({ mode: "heat", temperature: 24, fanSpeed: "low" });
+    expect(() => decideNextOperation(summer, { ...config, isOperationSupported: () => false })).toThrow("No supported operation candidates");
+  });
   it("真夏・在室中の蒸し暑い部屋では、冷房継続による除湿を反映し、423時間ではなく約12時間と予測する", () => {
     const snapshot = structuredClone(summer);
     const configSnapshot = structuredClone(coolingOnly);

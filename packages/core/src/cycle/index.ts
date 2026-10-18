@@ -11,7 +11,7 @@ export interface CycleOptions {
     send(message: {
       acMode: Exclude<Operation["mode"], "off">;
       temperature: number;
-      fanSpeed: "low" | "medium" | "high";
+      fanSpeed?: "low" | "medium" | "high";
     }): Promise<void>;
     stop(): Promise<void>;
   };
@@ -118,13 +118,15 @@ export function createCycle(options: CycleOptions, dependencies: Partial<CycleDe
         break;
       case "cool":
       case "heat":
-      case "dehumidify":
-        await options.remoteControl.send({
+      case "dehumidify": {
+        const message: Parameters<CycleOptions["remoteControl"]["send"]>[0] = {
           acMode: plan.mode,
           temperature: plan.temperature,
-          fanSpeed: plan.fanSpeed,
-        });
+        };
+        if (plan.fanSpeed !== undefined) message.fanSpeed = plan.fanSpeed;
+        await options.remoteControl.send(message);
         break;
+      }
       default: {
         const exhaustiveCheck: never = plan;
         return exhaustiveCheck;

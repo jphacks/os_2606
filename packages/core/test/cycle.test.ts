@@ -41,6 +41,13 @@ test("洗濯したよで室内モード・進捗0から開始する", async () =
   expect(f.task.start).toHaveBeenCalledOnce();
 });
 
+test("自動除湿の計画では風量を省略して送信する", async () => {
+  const f = setup();
+  f.decideNextOperation.mockReturnValue({ mode: "dehumidify", temperature: 24, estimatedDryingHours: 1 });
+  await f.cycle.startDrying();
+  expect(f.options.remoteControl.send).toHaveBeenCalledExactlyOnceWith({ acMode: "dehumidify", temperature: 24 });
+});
+
 test("行ってきますは洗濯済みとして外出モード・進捗0から開始する", async () => {
   const f = setup();
   await f.cycle.leaveHouse();

@@ -66,20 +66,28 @@ sudo chmod 600 /opt/os_2606/shared/.env
 sudoedit /opt/os_2606/shared/.env
 ```
 
-**アプリの設定は`/opt/os_2606/shared/.env`の1ファイルだけです。** LINEの認証情報2項目を埋めれば起動できます。
+**アプリの設定は`/opt/os_2606/shared/.env`の1ファイルだけです。** LINEの認証情報・操作ユーザーID・外気温湿度を設定します。
 初回は空のファイルに以下を貼り付け、LINEの値を実際の認証情報に置き換えて保存してください。
 GPIOとポートは変更する場合だけ編集してください。省略時も以下の既定値になります。
 
 ```dotenv
 LINE_CHANNEL_SECRET=LINEのチャネルシークレット
 LINE_CHANNEL_ACCESS_TOKEN=LINEのチャネルアクセストークン
+# 以下の外気温湿度は例です。設置場所の値に置き換えてください。
+OUTDOOR_TEMPERATURE=18
+OUTDOOR_HUMIDITY=60
+COMFORT_TEMPERATURE=24
 PORT=3000
 IR_RX_GPIO=17
 IR_TX_GPIO=18
 DHT_GPIO=4
+IR_REMOTE_PATH=data/ir/remote.json
 ```
 
 systemdとセンサーCLIが同じ設定を使います。デプロイではこのファイルを上書きしません。
+起動時に室内DHT11と学習データを読み込みます。実行ユーザー`os2606`がセンサーを読み取り、赤外線デバイスへ送信できる状態にしてください。
+最初の起動前に[sensorの手順](../packages/sensor/README.md)でリモコンを学習し、保存先を`/opt/os_2606/shared/data/ir/remote.json`に配置します。
+デプロイ後の`app/data`は`shared/data`へのリンクです。外気温湿度は起動時の値を使い、自動更新はしません。
 1行に`KEY=VALUE`を1つ書き、コメントは独立した行の先頭に`#`を付けます。`export`は不要です。
 
 次のサービス登録だけは、Piに取得した**この変更を含むリポジトリのルート**へ移動してから実行します。

@@ -3,7 +3,9 @@ export type FanSpeed = "low" | "medium" | "high";
 export type PresenceMode = "home" | "away";
 
 export type Operation =
-  | { mode: AirconMode; temperature: number; fanSpeed: FanSpeed }
+  | { mode: "cool" | "heat"; temperature: number; fanSpeed: FanSpeed }
+  /** 風量省略は自動除湿。予測では暫定的に中風量相当として扱う。 */
+  | { mode: "dehumidify"; temperature: number; fanSpeed?: FanSpeed }
   | { mode: "off"; temperature?: never; fanSpeed?: never };
 
 export interface DryingContext {
@@ -17,7 +19,7 @@ export interface DryingContext {
   dryingProgress?: number;
 }
 
-/** 運転時は設定温度（℃）と風量を返す。停止時は両方とも省略する。 */
+/** 運転時は設定温度（℃）と風量を返す。自動除湿は風量、停止時は両方を省略する。 */
 export type DryingDecision = Operation & {
   /**
    * 選んだ設定と外気条件を固定し、温湿度と進捗を積算した完了時間（時間）。
@@ -34,11 +36,15 @@ export interface TemperatureRange {
 }
 
 export interface DryingConfig {
+  /** 実機の通信方式・派生機種で送信できる設定だけを候補にする。 */
+  readonly isOperationSupported?: (operation: Operation) => boolean;
   readonly temperatureRanges: Readonly<Record<"cool" | "heat", TemperatureRange>>;
   readonly capabilities: {
     readonly modes: readonly AirconMode[];
     readonly fanSpeeds: Readonly<Record<AirconMode, readonly FanSpeed[]>>;
     readonly allowOff: boolean;
+    /** 風量を省略した自動除湿も候補にする。省略時はfalse。 */
+    readonly allowAutomaticDehumidify?: boolean;
   };
   readonly dryingWeight: number;
   readonly defaultComfortTemperature: number;

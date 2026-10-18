@@ -41,7 +41,7 @@ export function createLineBot(
   ): Promise<messagingApi.Message[]> {
     switch (message.type) {
       case "text":
-        return handleText();
+        return handleText(message.text, core);
       case "image":
         return handleImage(await downloadImage(message.id), core);
       default:

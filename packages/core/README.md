@@ -27,7 +27,7 @@ const plan = decideNextOperation({
 });
 
 // plan.mode: "cool" | "heat" | "dehumidify" | "off"
-// plan.temperature / plan.fanSpeed: 運転時の設定。停止時は省略。
+// plan.temperature / plan.fanSpeed: 運転時の設定。自動除湿では風量、停止時は両方を省略。
 // plan.estimatedDryingHours: 乾くまでの推定残り時間（時間）。
 ```
 

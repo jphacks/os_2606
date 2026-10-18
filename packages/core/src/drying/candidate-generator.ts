@@ -32,10 +32,14 @@ export function generateOperationCandidates(context: DryingContext, config: Dryi
       for (const fanSpeed of new Set(config.capabilities.fanSpeeds[mode])) {
         operations.push({ mode, temperature, fanSpeed });
       }
+      if (mode === "dehumidify" && config.capabilities.allowAutomaticDehumidify === true) {
+        operations.push({ mode, temperature });
+      }
     }
   }
   if (context.presenceMode === "away" && config.capabilities.allowOff) {
     operations.push({ mode: "off" });
   }
+  if (config.isOperationSupported) return operations.filter(config.isOperationSupported);
   return operations;
 }
