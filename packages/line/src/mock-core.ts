@@ -21,4 +21,7 @@ export const mockCore: CoreApi = {
   async setUpHouseConfig(region) {
     console.log("[core] setUpHouseConfig", region);
   },
+  async setComfortTemperature(temperature) {
+    console.log("[core] setComfortTemperature", temperature);
+  },
 };

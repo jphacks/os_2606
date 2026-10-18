@@ -41,6 +41,12 @@ export interface CoreApi {
 
   /** 家の地域を設定する。 */
   setUpHouseConfig(region: string): Promise<void>;
+
+  /** 家の地域を設定する。 */
+  setUpHouseConfig(region: string): Promise<void>;
+
+  /** いつもの室温（快適温度、°C）を設定する。 */
+  setComfortTemperature(temperature: number): Promise<void>;
 }
 
 /** coreから呼び出す、LINEが提供するAPI。 */
