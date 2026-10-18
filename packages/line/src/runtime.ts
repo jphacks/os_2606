@@ -9,27 +9,11 @@ export function createRuntime(
     outdoorTemperature: number;
     outdoorHumidity: number;
     comfortTemperature: number;
-    onTemperatureChanged?(temperature: number): Promise<void>;
   },
   dependencies: Partial<CycleDependencies> = {},
 ): { core: CoreApi; dispose(): Promise<void> } {
-  let lastTemperature: number | undefined;
   const cycle = createCycle({
     ...options,
-    remoteControl: {
-      stop: () => options.remoteControl.stop(),
-      async send(message) {
-        await options.remoteControl.send(message);
-        if (lastTemperature === message.temperature) return;
-        lastTemperature = message.temperature;
-        try {
-          await options.onTemperatureChanged?.(message.temperature);
-        } catch (error) {
-          // 通知の失敗で、送信済みの操作や乾燥計画を失敗扱いにしない。
-          options.onError(error);
-        }
-      },
-    },
     async getContext() {
       const { temperature, humidity } = await options.sensor.measure();
       return {

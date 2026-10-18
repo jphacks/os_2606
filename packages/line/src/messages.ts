@@ -1,4 +1,5 @@
 //返信の見た目を作るファイル
+import type { DryingEstimate } from "@os/api";
 import type { messagingApi } from "@line/bot-sdk";
 import { POSTBACK_DATA } from "./postback-data.js";
 
@@ -69,4 +70,20 @@ function positionButton(label: string, data: string): messagingApi.FlexButton {
     color: "#2B7DE9",
     action: { type: "postback", label, data, inputOption: "openRichMenu" },
   };
+}
+
+export function dryingEstimateText(estimate: DryingEstimate): string {
+  if (!Number.isFinite(estimate.estimatedDryingHours)) {
+    return "現在の条件では乾燥完了までの時間を予測できません。";
+  }
+  const minutes = Math.max(0, Math.ceil(estimate.estimatedDryingHours * 60));
+  if (minutes === 0) return "洗濯物は乾燥が完了した見込みです。";
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  let duration = `${minutes}分`;
+  if (hours > 0) {
+    duration = `${hours}時間`;
+    if (remainder > 0) duration += `${remainder}分`;
+  }
+  return `乾燥完了までの目安：あと約${duration}です。`;
 }

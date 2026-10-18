@@ -6,6 +6,7 @@ import { createHmac } from "node:crypto";
 import { once } from "node:events";
 import { createServer } from "node:http";
 import { beforeEach, expect, test, vi } from "vitest";
+import { dryingEstimateText } from "./messages.js";
 import { createApplication, readApplicationConfig } from "./application.js";
 
 const hardware = vi.hoisted(() => ({
@@ -123,7 +124,7 @@ test.each([false, true])("Webhookから送信・停止・通知まで実行す�
     }
     expect(reply).toHaveBeenCalledOnce();
     expect(broadcast).toHaveBeenCalledExactlyOnceWith({
-      messages: [{ type: "text", text: `エアコンの設定温度を${expected.temperature}℃にしました。` }],
+      messages: [{ type: "text", text: `運転計画（在宅中）\n${{ cool: "冷房", heat: "暖房", dehumidify: "除湿" }[expected.mode]}・設定温度${expected.temperature}℃・風量${{ low: "弱", medium: "中", high: "強", auto: "自動" }[expected.fanSpeed ?? "auto"]}\n${dryingEstimateText(expected)}` }],
     });
     expect((await send("洗濯したよ", "someone-else")).status).toBe(200);
     expect(reply).toHaveBeenCalledTimes(2);
@@ -140,7 +141,7 @@ test.each([false, true])("Webhookから送信・停止・通知まで実行す�
     expect(hardware.remote.send).toHaveBeenCalledTimes(2);
     hardware.now += expected.estimatedDryingHours * 3_600_000;
     await hardware.tick();
-    expect(broadcast).toHaveBeenCalledTimes(3); // 初回設定と2回の完了。同じ温度の再設定は通知しない。
+    expect(broadcast).toHaveBeenCalledTimes(4); // 2回の運転計画と2回の完了通知。
   } finally {
     await application.dispose();
     server.closeAllConnections();
