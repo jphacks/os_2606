@@ -26,9 +26,11 @@ export const mitsubishiHeavy152: Protocol = {
 
     if (message) {
       validateTemperature(message, 17, 31);
-      setBits(state, 5, 0x27, message.acMode === "cool" ? 1 : 4); // Clean disabled.
+      setBits(state, 5, 0x27, { cool: 1, heat: 4, dehumidify: 2 }[message.acMode]); // Clean disabled.
       setBits(state, 7, 15, message.temperature - 17);
-      setBits(state, 9, 15, 0); // Auto fan.
+      if (message.fanSpeed !== undefined) {
+        setBits(state, 9, 15, { low: 1, medium: 2, high: 3 }[message.fanSpeed]);
+      }
       setBits(state, 15, 0xc0, 0);
 
       if (message.windDirectionVertical !== undefined) {

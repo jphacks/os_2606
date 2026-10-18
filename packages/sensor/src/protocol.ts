@@ -5,6 +5,7 @@ import {
   decodeWave,
   encodeWave,
   horizontalPositions,
+  setBits,
   verticalPositions,
 } from "./protocols/common.js";
 import type { Protocol } from "./protocols/common.js";
@@ -56,7 +57,26 @@ export function validateRemote(value: unknown): LearnedRemote {
   if (!format.isValidState(state)) {
     throw new Error("Invalid IR signature, checksum or unsupported variant.");
   }
-  return { version: 1, protocol, state };
+  const result: LearnedRemote = { version: 1, protocol, state };
+  if (protocol === "sharp104") {
+    let detectedModel: NonNullable<LearnedRemote["sharpModel"]> = "a907";
+    if (state[11]! & 0x10) {
+      detectedModel = "a903";
+      if (state[4]! & 0x10) {
+        detectedModel = "a705";
+      }
+    }
+    const model = remote.sharpModel ?? detectedModel;
+    if (
+      (model !== "a705" && model !== "a903" && model !== "a907") ||
+      (model === "a907") !== (detectedModel === "a907") ||
+      (state[4] !== 0 && model !== detectedModel)
+    ) {
+      throw new Error("Invalid learned Sharp model.");
+    }
+    result.sharpModel = model;
+  }
+  return result;
 }
 
 /** Identify the wire format and retain variant bytes; no model setting is required. */
@@ -74,14 +94,16 @@ export function identify(signal: IrSignal): LearnedRemote {
       "Unsupported or incomplete IR signal. Capture a temperature/mode button with the remote powered on; short/toggle commands cannot identify a complete AC state.",
     );
   }
-  return candidates[0]!;
+  return validateRemote(candidates[0]!);
 }
 
 /** Undefined message means explicit power-off; no power toggle is used. */
 export function encode(value: LearnedRemote, message?: AcMessage): IrSignal {
   const remote = validateRemote(value);
   if (message) {
-    const invalidMode = message.acMode !== "cool" && message.acMode !== "heat";
+    const invalidMode = !["cool", "heat", "dehumidify"].includes(message.acMode);
+    const invalidFanSpeed =
+      message.fanSpeed !== undefined && !["low", "medium", "high"].includes(message.fanSpeed);
     const invalidVertical =
       message.windDirectionVertical !== undefined &&
       !Object.hasOwn(verticalPositions, message.windDirectionVertical);
@@ -89,12 +111,16 @@ export function encode(value: LearnedRemote, message?: AcMessage): IrSignal {
       message.windDirectionHorizontal !== undefined &&
       !Object.hasOwn(horizontalPositions, message.windDirectionHorizontal);
 
-    if (invalidMode || invalidVertical || invalidHorizontal) {
-      throw new Error("Invalid AC mode or wind direction.");
+    if (invalidMode || invalidFanSpeed || invalidVertical || invalidHorizontal) {
+      throw new Error("Invalid AC mode, fan speed or wind direction.");
     }
   }
 
   const format = protocols[remote.protocol];
+  if (message && message.acMode !== "dehumidify" && remote.sharpModel === "a705") {
+    // Restore the variant before encoding a new temperature after dry mode.
+    setBits(remote.state, 4, 0x10, 0x10);
+  }
   const updatedState = format.applyMessage(remote.state, message);
   const signal = encodeWave(format, updatedState);
   validateSignal(signal);

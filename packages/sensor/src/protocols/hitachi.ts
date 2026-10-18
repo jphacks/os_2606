@@ -41,9 +41,20 @@ export const hitachi224: Protocol = {
       rejectFixedWind(message);
       validateTemperature(message, 16, 32);
       state[9] = message.temperature === 16 ? 0x90 : 0x10;
-      state[10] = reverseBits(message.acMode === "cool" ? 4 : 3);
+      state[10] = reverseBits({ cool: 4, heat: 3, dehumidify: 5 }[message.acMode]);
       state[11] = reverseBits(message.temperature << 1);
-      state[13] = reverseBits(1); // Auto fan.
+      let fan = reverseBits(state[13]!);
+      if (message.fanSpeed !== undefined) {
+        fan = { low: 2, medium: 3, high: 4 }[message.fanSpeed];
+      }
+      if (message.acMode === "dehumidify") {
+        if (message.fanSpeed === "high") {
+          throw new Error("Hitachi 224-bit dehumidify supports only low or medium fan speed.");
+        }
+        // Dry mode cannot retain auto/high from a previous cooling/heating command.
+        fan = Math.min(3, Math.max(2, fan));
+      }
+      state[13] = reverseBits(fan);
     }
 
     state[27] = calculateChecksum(state);
@@ -68,9 +79,30 @@ export const hitachi424: Protocol = {
       rejectFixedWind(message);
       validateTemperature(message, 16, 32);
       setBits(state, 13, 0xfc, message.temperature << 2);
-      state[25] = 0x50 | (message.acMode === "cool" ? 3 : 6); // Auto fan.
+      let fan = state[25]! >> 4;
+      if (message.fanSpeed !== undefined) {
+        fan = { low: 2, medium: 3, high: 4 }[message.fanSpeed];
+      }
+      if (message.acMode === "dehumidify") {
+        if (message.fanSpeed === "medium" || message.fanSpeed === "high") {
+          throw new Error("Hitachi 424-bit dehumidify supports only low fan speed. Omit fanSpeed for auto/retained speed.");
+        }
+        if (fan !== 5) {
+          fan = Math.min(2, Math.max(1, fan)); // Auto (5) or the two lowest speeds.
+        }
+      }
+      state[25] = (fan << 4) | { cool: 3, heat: 6, dehumidify: 5 }[message.acMode];
       state[9] = 0x92;
       state[29] = 0;
+      switch (fan) {
+        case 1:
+          state[9] = 0x98;
+          break;
+        case 6:
+          state[9] = 0xa9;
+          state[29] = 0x30;
+          break;
+      }
     }
 
     updateInvertedBytePairs(state, 3);

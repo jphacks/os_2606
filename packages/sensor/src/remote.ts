@@ -47,6 +47,9 @@ export async function loadRemoteControl(): Promise<RemoteControl> {
     const sendTask = sendQueue.then(async () => {
       const signal = encode(learnedRemote, messageSnapshot);
       const nextRemote = messageSnapshot ? identify(signal) : undefined;
+      if (nextRemote && learnedRemote.sharpModel !== undefined) {
+        nextRemote.sharpModel = learnedRemote.sharpModel;
+      }
 
       await transmit(signal);
       if (nextRemote) {

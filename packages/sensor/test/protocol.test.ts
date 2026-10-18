@@ -33,7 +33,7 @@ test("generate complete cool/heat states and explicit off, without mutating the 
   assert.deepEqual(wave.timings.slice(0, 291), wave.timings.slice(292));
   assert.deepEqual(
     identify(wave).state,
-    [0x23, 0xcb, 0x26, 1, 0, 0x20, 0x18, 0x1a, 0x26, 0xc8, 0, 0, 0, 0, 0, 0, 8, 0x5d],
+    [0x23, 0xcb, 0x26, 1, 0, 0x20, 0x18, 0x1a, 0x26, 0x49, 0, 0, 0, 0, 0, 0, 8, 0xde],
   );
   assert.deepEqual(
     identify(
@@ -45,7 +45,7 @@ test("generate complete cool/heat states and explicit off, without mutating the 
         windDirectionHorizontal: "center",
       }),
     ).state,
-    [0x23, 0xcb, 0x26, 1, 0, 0x20, 8, 4, 0x30, 0xd8, 0, 0, 0, 0, 0, 0, 0x18, 0x61],
+    [0x23, 0xcb, 0x26, 1, 0, 0x20, 8, 4, 0x30, 0x59, 0, 0, 0, 0, 0, 0, 0x18, 0xe2],
   );
   assert.deepEqual(identify(encode(remote144)).state, capture144State);
   assert.deepEqual(remote144.state, capture144State);
@@ -100,6 +100,12 @@ test("reject unsupported temperature steps and malformed commands before transmi
   }
   assert.throws(() => encode(identify(capture144), { ...cool, temperature: 26.25 }));
   assert.throws(() => encode(remote, { ...cool, acMode: "dry" } as unknown as AcMessage));
+  for (const fanSpeed of ["auto", "max", "", null, 1, {}, "toString"]) {
+    assert.throws(
+      () => encode(remote, { ...cool, fanSpeed } as unknown as AcMessage),
+      /fan speed/,
+    );
+  }
   assert.throws(() =>
     encode(remote, { ...cool, windDirectionVertical: "left" } as unknown as AcMessage),
   );

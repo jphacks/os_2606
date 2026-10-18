@@ -5,6 +5,8 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { parseFlipper } from "../src/flipper.js";
 import { identify } from "../src/protocol.js";
+import { encodeWave } from "../src/protocols/common.js";
+import { sharp104 } from "../src/protocols/sharp.js";
 import type { AcMessage } from "@os/api";
 import type { IrSignal } from "../src/types.js";
 import { capture112, capture112State } from "./fixtures.js";
@@ -46,15 +48,22 @@ test("learn, persist, reload and serialize send/off; failed sends do not block l
   const message: AcMessage = {
     acMode: "cool",
     temperature: 26,
+    fanSpeed: "low",
     windDirectionVertical: "up",
     windDirectionHorizontal: "center",
   };
   const first = remote.send(message);
   message.temperature = 30;
+  message.fanSpeed = "high";
   await Promise.all([first, remote.stop()]);
   assert.equal(identify(sent[0]!).state[7], 5); // 31 - 26, snapshot at invocation.
+  assert.equal(identify(sent[0]!).state[8]! & 7, 3); // Low, snapshot before caller changed it.
   assert.equal(identify(sent[1]!).state[5]! & 4, 0);
   await assert.rejects(remote.send(undefined as unknown as AcMessage));
+  await assert.rejects(
+    remote.send({ ...message, fanSpeed: "auto" } as unknown as AcMessage),
+    /fan speed/,
+  );
   assert.equal(sent.length, 2);
   fail = true;
   const rejected = remote.send(message);
@@ -66,16 +75,38 @@ test("learn, persist, reload and serialize send/off; failed sends do not block l
   await assert.rejects(saveSignal({ ...capture112, timings: [9000, 4500, 560] }), /Unsupported/);
   assert.equal(await readFile(file, "utf8"), saved);
 
-  // A failed direction change must not leak into the next queued, omitted direction.
+  // Failed direction/fan changes must not leak into the next queued, omitted settings.
   fail = true;
   const badWind = remote.send({ ...message, windDirectionHorizontal: "right" });
-  const retainedWind = remote.send({ acMode: "heat", temperature: 22 });
+  const retainedWind = remote.send({ acMode: "dehumidify", temperature: 22 });
   await assert.rejects(badWind, /write failed/);
   await retainedWind;
   assert.equal(identify(sent.at(-1)!).state[12]! & 0x3c, 0x0c); // Last successful center, not right or learned auto.
+  assert.equal(identify(sent.at(-1)!).state[6]! & 7, 2); // Dry.
+  assert.equal(identify(sent.at(-1)!).state[8]! & 7, 3); // Last successful low.
   const reloaded = await loadRemoteControl();
   await reloaded.send({ acMode: "cool", temperature: 25 });
   assert.equal(identify(sent.at(-1)!).state[12]! & 0x3c, 0x0c);
+  assert.equal(identify(sent.at(-1)!).state[8]! & 7, 3);
+
+  await t.test("Sharp A705 survives dry, stop and reload before cooling again", async () => {
+    // Upstream TestSharpAcClass.Models real A705 message.
+    const state = [0xaa, 0x5a, 0xcf, 0x10, 0xd1, 0x11, 0x22, 0, 8, 0x80, 0, 0xf0, 0xf1];
+    await saveSignal(encodeWave(sharp104, state));
+    const sharp = await loadRemoteControl();
+    await sharp.send({ acMode: "dehumidify", temperature: 24 });
+    assert.equal(identify(sent.at(-1)!).state[4], 0);
+    assert.equal(JSON.parse(await readFile(file, "utf8")).sharpModel, "a705");
+    await sharp.stop();
+    assert.equal(identify(sent.at(-1)!).state[4], 0); // Keep the dry temperature encoding on off.
+    const reloadedSharp = await loadRemoteControl();
+    await assert.rejects(reloadedSharp.send({ acMode: "heat", temperature: 22 }), /heating/);
+    await reloadedSharp.send({ acMode: "cool", temperature: 26, fanSpeed: "high" });
+    const cooled = identify(sent.at(-1)!);
+    assert.equal(cooled.state[4], 0xdb); // A705 model bit restored, not A903's 0xcb.
+    assert.equal(cooled.state[6]! & 0x70, 0x70);
+    assert.equal(cooled.sharpModel, "a705");
+  });
 });
 
 const flipper = `Filetype: IR signals file

@@ -41,8 +41,10 @@ export const fujitsu128: Protocol = {
     const temperatureScale = usesHalfDegrees ? 2 : 4;
     const encodedTemperature = (message.temperature - temperatureBase) * temperatureScale;
     state[8] = (encodedTemperature << 2) | 1; // Power-on bit.
-    setBits(state, 9, 0x3f, message.acMode === "cool" ? 1 : 4); // Timers/10°C heat off.
-    setBits(state, 10, 7, 0); // Auto fan; retain learned swing flags and model-specific bytes.
+    setBits(state, 9, 0x3f, { cool: 1, heat: 4, dehumidify: 2 }[message.acMode]); // Timers/10°C heat off.
+    if (message.fanSpeed !== undefined) {
+      setBits(state, 10, 7, { low: 3, medium: 2, high: 1 }[message.fanSpeed]);
+    }
     state[11] = 0;
     state[12] = 0;
     state[13] = 0;

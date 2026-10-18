@@ -28,9 +28,11 @@ export const daikin280: Protocol = {
     if (message) {
       rejectFixedWind(message);
       validateTemperature(message, 10, 32);
-      setBits(state, 21, 0x70, (message.acMode === "cool" ? 3 : 4) << 4);
+      setBits(state, 21, 0x70, { cool: 0x30, heat: 0x40, dehumidify: 0x20 }[message.acMode]);
       state[22] = message.temperature * 2;
-      setBits(state, 24, 0xf0, 0xa0);
+      if (message.fanSpeed !== undefined) {
+        setBits(state, 24, 0xf0, { low: 0x30, medium: 0x50, high: 0x60 }[message.fanSpeed]);
+      }
       setBits(state, 29, 0x21, 0);
       setBits(state, 32, 4, 0);
     }
@@ -66,10 +68,12 @@ export const daikin2: Protocol = {
 
     if (message) {
       validateTemperature(message, message.acMode === "cool" ? 18 : 10, 32);
-      setBits(state, 25, 0x70, (message.acMode === "cool" ? 3 : 4) << 4);
+      setBits(state, 25, 0x70, { cool: 0x30, heat: 0x40, dehumidify: 0x20 }[message.acMode]);
       setBits(state, 26, 0xfe, message.temperature << 1); // Humidification overrides temperature.
       state[27] = 0;
-      setBits(state, 28, 0xf0, 0xa0);
+      if (message.fanSpeed !== undefined) {
+        setBits(state, 28, 0xf0, { low: 0x30, medium: 0x50, high: 0x60 }[message.fanSpeed]);
+      }
       setBits(state, 33, 0x21, 0);
       setBits(state, 36, 4, 0);
 

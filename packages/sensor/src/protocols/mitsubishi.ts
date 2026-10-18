@@ -32,7 +32,7 @@ function applyMessage(state: number[], message?: AcMessage): number[] {
       message.windDirectionVertical && verticalPositions[message.windDirectionVertical];
     const horizontalPosition =
       message.windDirectionHorizontal && horizontalPositions[message.windDirectionHorizontal];
-    const modeCode = message.acMode === "cool" ? 3 : 1;
+    const modeCode = { cool: 3, heat: 1, dehumidify: 2 }[message.acMode];
 
     if (is144Bit) {
       // Low four bits encode degrees above 16°C; bit 4 adds half a degree.
@@ -40,11 +40,15 @@ function applyMessage(state: number[], message?: AcMessage): number[] {
       const halfDegreeFlag = message.temperature % 1 ? 0x10 : 0;
       setBits(state, 6, 0x38, modeCode << 3);
       setBits(state, 7, 0x1f, wholeDegrees | halfDegreeFlag);
-      setBits(state, 8, 15, message.acMode === "cool" ? 6 : 0);
+      setBits(state, 8, 15, { cool: 6, heat: 0, dehumidify: 2 }[message.acMode]);
       if (horizontalPosition !== undefined) {
         setBits(state, 8, 0xf0, horizontalPosition << 4);
       }
-      setBits(state, 9, 0xc7, 0xc0); // Auto fan; keep unspecified vane positions.
+      setBits(state, 9, 0x40, 0x40); // Vane flag; keep unspecified fan/vane settings.
+      if (message.fanSpeed !== undefined) {
+        // Clear the auto-fan bit when selecting a manual speed.
+        setBits(state, 9, 0x87, { low: 1, medium: 2, high: 3 }[message.fanSpeed]);
+      }
       if (verticalPosition !== undefined) {
         setBits(state, 9, 0x38, verticalPosition << 3);
         setBits(state, 16, 0x38, verticalPosition << 3);
@@ -59,6 +63,9 @@ function applyMessage(state: number[], message?: AcMessage): number[] {
     } else {
       setBits(state, 6, 7, modeCode);
       setBits(state, 7, 15, 31 - message.temperature);
+      if (message.fanSpeed !== undefined) {
+        setBits(state, 8, 7, { low: 3, medium: 5, high: 0 }[message.fanSpeed]);
+      }
       if (verticalPosition !== undefined) {
         setBits(state, 8, 0x38, verticalPosition << 3);
       }

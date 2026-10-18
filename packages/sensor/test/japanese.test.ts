@@ -44,7 +44,9 @@ const fields: Record<
 for (const fixture of japaneseCaptures) {
   test(`${fixture.protocol}: identify a real capture; encode cool, heat and absolute off`, () => {
     const remote = identify(fixture.signal);
-    assert.deepEqual(remote, { version: 1, protocol: fixture.protocol, state: fixture.state });
+    assert.equal(remote.version, 1);
+    assert.equal(remote.protocol, fixture.protocol);
+    assert.deepEqual(remote.state, fixture.state);
     for (const acMode of ["cool", "heat"] as const) {
       const signal = encode(remote, { acMode, temperature: acMode === "cool" ? 26 : 22 });
       const encoded = identify(signal);
