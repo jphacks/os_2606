@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_DRYING_CONFIG, estimateProgressGain } from "@os/core";
+import { DEFAULT_DRYING_CONFIG } from "@os/core";
 import type { DryingCycleDependencies, DryingCycleState } from "./drying-cycle.js";
 import { runDryingCycle } from "./drying-cycle.js";
 
 const hour = 3_600_000;
+// 24℃・70%での1時間の進捗。VPDモデルから独立に算出した参照値。
+const hourlyProgress = 0.08522637626978319;
 
 function fixture(initial: DryingCycleState = { dryingProgress: 0.2, observation: { temperature: 24, humidity: 70, observedAt: 0 } }) {
   let stored = initial;
@@ -36,8 +38,8 @@ describe("乾燥再評価アプリケーション", () => {
     expect(deps.readIndoor).toHaveBeenCalledOnce();
     expect(deps.readForecast).toHaveBeenCalledOnce();
     expect(result.status).toBe("applied");
-    expect(result.dryingProgress).toBeCloseTo(0.2 + estimateProgressGain(24, 70, 1));
-    expect(result.decision?.estimatedProgressGain).toBeGreaterThan(0);
+    expect(result.dryingProgress).toBeCloseTo(0.2 + hourlyProgress);
+    expect(result.decision?.estimatedDryingHours).toBeGreaterThan(0);
     expect(deps.remoteControl.send).toHaveBeenCalledWith(expect.objectContaining({
       fanSpeed: expect.any(String), windDirectionVertical: "down", windDirectionHorizontal: "left",
     }));
@@ -54,7 +56,7 @@ describe("乾燥再評価アプリケーション", () => {
     vi.mocked(deps.readIndoor).mockResolvedValue({ temperature: 24, humidity: 70, observedAt: 2 * hour });
     vi.mocked(deps.now).mockReturnValue(2 * hour);
     const result = await runDryingCycle(deps, { presenceMode: "home" });
-    expect(result.dryingProgress).toBeCloseTo(0.2 + estimateProgressGain(24, 70, 2));
+    expect(result.dryingProgress).toBeCloseTo(0.2 + 2 * hourlyProgress);
     expect(result.status).toBe("applied");
   });
 

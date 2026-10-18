@@ -27,6 +27,6 @@ test("公開 API は入力と設定を変更せず、同じ入力から同じ運
   expect(decideNextOperation(context, config)).toEqual(plan);
   expect(decideNextOperation(context)).toEqual(plan);
   expect(plan.mode).not.toBe("off");
-  expect(plan.nextEvaluationMinutes).toBe(config.evaluationMinutes);
-  expect(plan.estimatedProgressGain).toBeGreaterThan(0);
+  expect(plan.estimatedDryingHours).toBeGreaterThan(0);
+  expect(Number.isFinite(plan.estimatedDryingHours)).toBe(true);
 });

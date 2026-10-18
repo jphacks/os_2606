@@ -1,5 +1,6 @@
 import { DEFAULT_DRYING_CONFIG } from "./config.js";
 import { evaluateOperations } from "./operation-evaluator.js";
+import { estimateDryingHours } from "./estimator.js";
 import type { DryingConfig, DryingContext, DryingDecision, Operation } from "./types.js";
 
 function temperatureChange(operation: Operation, context: DryingContext): number {
@@ -18,17 +19,13 @@ export function decideNextOperation(context: DryingContext, config: DryingConfig
   candidates.sort((a, b) => a.score - b.score || temperatureChange(a.operation, context) - temperatureChange(b.operation, context));
   const best = candidates[0];
   if (!best) throw new RangeError("No supported operation candidates");
-  let reason = "現在室温を基準に、推定乾燥進捗と温度変化のコストを比較しました。";
-  if (context.presenceMode === "home") {
-    reason = "快適温度と風量を考慮し、運転を継続する候補のコストを比較しました。";
+  let estimatedDryingHours = 0;
+  if (context.dryingProgress < 1) {
+    estimatedDryingHours = (1 - context.dryingProgress) *
+      estimateDryingHours(best.predictedTemperature, best.predictedHumidity);
   }
   return {
     ...best.operation,
-    estimatedProgressGain: best.estimatedProgressGain,
-    predictedTemperature: best.predictedTemperature,
-    predictedHumidity: best.predictedHumidity,
-    score: best.score,
-    nextEvaluationMinutes: config.evaluationMinutes,
-    reason,
+    estimatedDryingHours,
   };
 }
