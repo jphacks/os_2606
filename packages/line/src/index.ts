@@ -3,6 +3,8 @@ import type { webhook } from "@line/bot-sdk";
 import express from "express";
 import type { ErrorRequestHandler, Express } from "express";
 
+export { createLineApi } from "./line-api.js";
+
 export function createLineBot(channelSecret: string, channelAccessToken: string): Express {
   const app = express();
   const client = LineBotClient.fromChannelAccessToken({ channelAccessToken });

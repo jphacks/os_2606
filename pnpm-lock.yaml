@@ -42,6 +42,9 @@ importers:
       '@line/bot-sdk':
         specifier: ^11.3.0
         version: 11.3.0
+      '@os/api':
+        specifier: workspace:*
+        version: link:../api
       '@os/core':
         specifier: workspace:*
         version: link:../core
