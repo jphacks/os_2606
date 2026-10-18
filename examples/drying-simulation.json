@@ -1,9 +1,0 @@
-{
-  "indoorTemperature": 24,
-  "indoorHumidity": 70,
-  "outdoorTemperature": 18,
-  "outdoorHumidity": 60,
-  "presenceMode": "away",
-  "comfortTemperature": 24,
-  "dryingProgress": 0
-}

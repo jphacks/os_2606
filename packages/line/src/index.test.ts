@@ -1,4 +1,3 @@
-import { mockCore } from "./mock-core.js";
 import { LineBotClient } from "@line/bot-sdk";
 import type { CoreApi } from "@os/api";
 import { createHmac } from "node:crypto";
@@ -15,7 +14,6 @@ const getMessageContent = vi.spyOn(
   "getMessageContentWithHttpInfo",
 );
 const core = {
-  simulateDryingPlan: vi.fn(mockCore.simulateDryingPlan),
   startDrying: vi.fn(async () => ({ estimatedDryingHours: 1 })),
   leaveHouse: vi.fn(async () => ({ estimatedDryingHours: 1 })),
   arriveHouse: vi.fn(async () => undefined),
@@ -178,21 +176,6 @@ test("「いってきます」ボタンを押すとleaveHouseを呼び、返信�
     messages: [
       { type: "text", text: "いってらっしゃい！\n洗濯物の乾燥を始めます。\n乾燥完了までの目安：あと約1時間です。" },
     ],
-  });
-});
-
-test("6時間の運転計画ボタンで試算結果を返信し、実運転を開始しない", async () => {
-  const body = JSON.stringify({ events: [{
-    type: "postback", replyToken: "simulation-token", postback: { data: "simulate-drying-plan" },
-  }] });
-  const response = await postWebhook(body, sign(body));
-  expect(response.status).toBe(200);
-  expect(core.simulateDryingPlan).toHaveBeenCalledOnce();
-  expect(core.startDrying).not.toHaveBeenCalled();
-  expect(core.leaveHouse).not.toHaveBeenCalled();
-  expect(replyMessage).toHaveBeenCalledWith({
-    replyToken: "simulation-token",
-    messages: [{ type: "text", text: expect.stringContaining("6時間の運転シミュレーション") }],
   });
 });
 

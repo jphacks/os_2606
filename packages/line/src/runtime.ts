@@ -27,7 +27,6 @@ export function createRuntime(
   }, dependencies);
   return {
     core: {
-      simulateDryingPlan: () => cycle.simulatePlan(),
       startDrying: () => cycle.startDrying(),
       leaveHouse: () => cycle.leaveHouse(),
       arriveHouse: () => cycle.arriveHouse(),
