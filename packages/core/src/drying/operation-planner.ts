@@ -1,7 +1,8 @@
 import { DEFAULT_DRYING_CONFIG } from "./config.js";
 import { evaluateOperations } from "./operation-evaluator.js";
-import { estimateDryingHours } from "./estimator.js";
+import { predictCompletionHours } from "./completion-predictor.js";
 import type { DryingConfig, DryingContext, DryingDecision, Operation } from "./types.js";
+import { validateConfig, validateContext } from "./validation.js";
 
 function temperatureChange(operation: Operation, context: DryingContext): number {
   if (operation.mode === "off") return 0;
@@ -16,18 +17,15 @@ function temperatureChange(operation: Operation, context: DryingContext): number
  * @throws {RangeError} 入力・設定が不正、または運転候補がない場合。
  */
 export function decideNextOperation(context: DryingContext, config: DryingConfig = DEFAULT_DRYING_CONFIG): DryingDecision {
-  const { dryingProgress = 0 } = context;
+  validateContext(context);
+  validateConfig(config);
+  if (context.dryingProgress === 1) return { mode: "off", estimatedDryingHours: 0 };
   const candidates = evaluateOperations(context, config);
   candidates.sort((a, b) => a.score - b.score || temperatureChange(a.operation, context) - temperatureChange(b.operation, context));
   const best = candidates[0];
   if (!best) throw new RangeError("No supported operation candidates");
-  let estimatedDryingHours = 0;
-  if (dryingProgress < 1) {
-    estimatedDryingHours = (1 - dryingProgress) *
-      estimateDryingHours(best.predictedTemperature, best.predictedHumidity);
-  }
   return {
     ...best.operation,
-    estimatedDryingHours,
+    estimatedDryingHours: predictCompletionHours(context, best.operation, config),
   };
 }
