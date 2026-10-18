@@ -1,14 +1,15 @@
-import { handleText, quickReply } from "./command.js";
 import {
   JSONParseError,
   LineBotClient,
   middleware,
   SignatureValidationFailed,
 } from "@line/bot-sdk";
-import type { webhook } from "@line/bot-sdk";
-import type { CoreApi } from "@os/api";
+import type { messagingApi, webhook } from "@line/bot-sdk";
+import type { CoreApi, Image } from "@os/api";
 import express from "express";
 import type { ErrorRequestHandler, Express } from "express";
+import { buffer } from "node:stream/consumers";
+import { handleImage, handlePostback, handleText } from "./command.js";
 
 export { createLineApi } from "./line-api.js";
 
@@ -20,6 +21,46 @@ export function createLineBot(
   const app = express();
   const client = LineBotClient.fromChannelAccessToken({ channelAccessToken });
 
+  // 写真はLINEのサーバーに置かれているので、ダウンロードする
+  async function downloadImage(messageId: string): Promise<Image> {
+    const { httpResponse, body } =
+      await client.getMessageContentWithHttpInfo(messageId);
+    return {
+      data: await buffer(body),
+      mimeType: httpResponse.headers.get("content-type") ?? "image/jpeg",
+    };
+  }
+
+  // 届いたメッセージの種類（文字・写真・スタンプなど）で処理を分ける
+  async function handleMessage(
+    message: webhook.MessageContent,
+  ): Promise<messagingApi.Message[]> {
+    switch (message.type) {
+      case "text":
+        return handleText();
+      case "image":
+        return handleImage(await downloadImage(message.id), core);
+      default:
+        return [];
+    }
+  }
+
+  // 出来事（メッセージ・ボタン）の種類で処理を分ける
+  async function handleEvent(
+    event: webhook.MessageEvent | webhook.PostbackEvent,
+  ): Promise<messagingApi.Message[]> {
+    switch (event.type) {
+      case "message":
+        return handleMessage(event.message);
+      case "postback":
+        return handlePostback(event.postback.data, core);
+      default: {
+        const exhaustiveCheck: never = event;
+        return exhaustiveCheck;
+      }
+    }
+  }
+
   app.post(
     "/webhook",
     middleware({ channelSecret }),
@@ -27,17 +68,16 @@ export function createLineBot(
       const body: webhook.CallbackRequest = request.body;
       for (const event of body.events) {
         if (
-          event.type !== "message" ||
-          event.message.type !== "text" ||
+          (event.type !== "message" && event.type !== "postback") ||
           !event.replyToken
         ) {
           continue;
         }
-        const replyText = await handleText(event.message.text, core);
-        await client.replyMessage({
-          replyToken: event.replyToken,
-          messages: [{ type: "text", text: replyText, quickReply }],
-        });
+        const messages = await handleEvent(event);
+        if (messages.length === 0) {
+          continue;
+        }
+        await client.replyMessage({ replyToken: event.replyToken, messages });
       }
       response.sendStatus(200);
     },

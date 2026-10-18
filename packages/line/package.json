@@ -12,6 +12,7 @@
   "scripts": {
     "build": "tsc -b",
     "start": "node dist/server.js",
+    "setup:rich-menu": "node dist/setup-rich-menu.js",
     "test": "vitest run"
   },
   "dependencies": {
