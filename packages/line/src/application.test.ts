@@ -122,22 +122,25 @@ test.each([false, true])("Webhookから送信・停止・通知まで実行す�
       });
     }
     expect(reply).toHaveBeenCalledOnce();
+    expect(broadcast).toHaveBeenCalledExactlyOnceWith({
+      messages: [{ type: "text", text: `エアコンの設定温度を${expected.temperature}℃にしました。` }],
+    });
     expect((await send("洗濯したよ", "someone-else")).status).toBe(200);
     expect(reply).toHaveBeenCalledTimes(2);
     expect(hardware.remote.send).toHaveBeenCalledOnce();
     hardware.now = expected.estimatedDryingHours * 3_600_000;
     await hardware.tick();
     expect(hardware.remote.stop).toHaveBeenCalledOnce();
-    expect(broadcast).toHaveBeenCalledExactlyOnceWith({
+    expect(broadcast).toHaveBeenLastCalledWith({
       messages: [{ type: "text", text: "洗濯物の乾燥が完了しました。" }],
     });
-    expect(hardware.remote.stop.mock.invocationCallOrder[0]).toBeLessThan(broadcast.mock.invocationCallOrder[0]!);
+    expect(hardware.remote.stop.mock.invocationCallOrder[0]).toBeLessThan(broadcast.mock.invocationCallOrder[1]!);
     // 次の乾燥は別のユーザーも開始でき、通知は再び一斉配信する。
     expect((await send("洗濯したよ", "someone-else")).status).toBe(200);
     expect(hardware.remote.send).toHaveBeenCalledTimes(2);
     hardware.now += expected.estimatedDryingHours * 3_600_000;
     await hardware.tick();
-    expect(broadcast).toHaveBeenCalledTimes(2);
+    expect(broadcast).toHaveBeenCalledTimes(3); // 初回設定と2回の完了。同じ温度の再設定は通知しない。
   } finally {
     await application.dispose();
     server.closeAllConnections();

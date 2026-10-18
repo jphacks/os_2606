@@ -55,6 +55,8 @@ export interface CoreApi {
 
 /** coreから呼び出す、LINEが提供するAPI。 */
 export interface LineApi {
+  /** システムが送信したエアコンの設定温度を通知する。 */
+  sendNotificationTemperatureChanged(temperature: number): Promise<void>;
   /** 乾燥の完了を通知する。 */
   sendNotificationFinishDrying(): Promise<void>;
 }
