@@ -9,28 +9,64 @@ systemdがHTTPの起動確認・Pi起動時の自動起動・異常終了時の�
 
 ## 1. Piの初回設定
 
-Raspberry Pi OS 64bit、Node.js 22系（最低22.6）、pnpm 10.26.2、Tailscaleを用意します。
-`node`と`pnpm`は`/usr/local/bin`など、非対話SSHでも利用できるPATHへ置いてください。
+Raspberry Pi OS 64bit、Node.js 22系（最低22.6）とnpm、Tailscaleを用意します。
+`node`と`npm`は`/usr/local/bin`または`/usr/bin`から利用できるよう、システム全体に導入してください。
 サービスのアクセス制限に合わせ、Node.jsと配布先は`/home`・`/tmp`・`/var/tmp`以外へ置いてください。
-以下はPi上で、この変更を含むリポジトリのルートから実行します。
+nvmなどで管理用ユーザーのホームに導入したNode.jsは、このサービスでは使用できません。
+まずPi上で次を実行し、`node`が22系（最低22.6）、`npm`も実行できることを確認します。
+
+```sh
+sudo node --version
+sudo npm --version
+```
+
+`sudo`から見つからない場合や、ホーム配下にしか導入していない場合は、
+[NodeSourceのAPTリポジトリ](https://github.com/nodesource/distributions/blob/master/DEV_README.md#using-ubuntu-nodejs-22)からNode.js 22とnpmを導入します。
+次の手順はRaspberry Pi OS 64bit向けです。セットアップスクリプトが成功した場合だけインストールへ進みます。
+
+```sh
+sudo apt update
+sudo apt install -y ca-certificates curl
+nodesource_setup=$(mktemp)
+curl -fsSL https://deb.nodesource.com/setup_22.x -o "$nodesource_setup" &&
+  sudo bash "$nodesource_setup" &&
+  sudo apt install -y nodejs
+rm -f "$nodesource_setup"
+sudo env PATH=/usr/local/bin:/usr/bin:/bin node --version
+sudo env PATH=/usr/local/bin:/usr/bin:/bin npm --version
+```
+
+最後の確認でNode.js 22系とnpmのバージョンが表示されてから進んでください。
+
+pnpmは[npmから直接導入](https://pnpm.io/10.x/installation#using-npm)します。Corepackは不要です。
+以下のアカウント作成と環境変数の設定は、Pi上のどのディレクトリからでも実行できます。
 
 ```sh
 sudo apt update
 sudo apt install -y curl
-sudo corepack enable
-# os2606がまだ存在しない場合に実行する。
-sudo adduser --disabled-password --gecos '' os2606
-sudo -u os2606 corepack prepare pnpm@10.26.2 --activate
-sudo -u os2606 pnpm --version
+sudo env PATH=/usr/local/bin:/usr/bin:/bin npm install --global --prefix /usr/local pnpm@10.26.2
+if ! id os2606 >/dev/null 2>&1; then
+  sudo adduser --disabled-password --gecos '' os2606
+fi
+sudo -iu os2606 env PATH=/usr/local/bin:/usr/bin:/bin node --version
+sudo -iu os2606 env PATH=/usr/local/bin:/usr/bin:/bin pnpm --version
+```
+
+確認時は`sudo -i`で`os2606`のホームへ移動します。管理用ユーザーのホームを作業ディレクトリとして引き継ぐと、pnpmが`EACCES: permission denied, scandir`で失敗する場合があります。
+`pnpm`が`10.26.2`と表示されることを確認したら、設定ファイルを作成します。
+既存のファイルがある場合はその内容を残します。`.env.example`のコピーは不要です。
+
+```sh
 sudo install -d -o os2606 -g os2606 -m 750 /opt/os_2606 /opt/os_2606/shared
 if ! sudo test -e /opt/os_2606/shared/.env; then
-  sudo install -o os2606 -g os2606 -m 600 .env.example /opt/os_2606/shared/.env
+  sudo install -o os2606 -g os2606 -m 600 /dev/null /opt/os_2606/shared/.env
 fi
 sudo chmod 600 /opt/os_2606/shared/.env
 sudoedit /opt/os_2606/shared/.env
 ```
 
 **アプリの設定は`/opt/os_2606/shared/.env`の1ファイルだけです。** LINEの認証情報2項目を埋めれば起動できます。
+初回は空のファイルに以下を貼り付け、LINEの値を実際の認証情報に置き換えて保存してください。
 GPIOとポートは変更する場合だけ編集してください。省略時も以下の既定値になります。
 
 ```dotenv
@@ -44,6 +80,9 @@ DHT_GPIO=4
 
 systemdとセンサーCLIが同じ設定を使います。デプロイではこのファイルを上書きしません。
 1行に`KEY=VALUE`を1つ書き、コメントは独立した行の先頭に`#`を付けます。`export`は不要です。
+
+次のサービス登録だけは、Piに取得した**この変更を含むリポジトリのルート**へ移動してから実行します。
+`deploy/systemd/os2606-line.service`が存在することを確認してください。
 
 ```sh
 sudo install -o root -g root -m 644 deploy/systemd/os2606-line.service /etc/systemd/system/os2606-line.service
