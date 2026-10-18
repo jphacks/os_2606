@@ -4,10 +4,10 @@ import { handleImage, handlePostback, handleText } from "./command.js";
 import { POSTBACK_DATA } from "./postback-data.js";
 
 const core = {
-  startDrying: vi.fn(async () => {}),
-  leaveHouse: vi.fn(async () => {}),
-  arriveHouse: vi.fn(async () => {}),
-  hangLaundryEvidence: vi.fn(async () => {}),
+  startDrying: vi.fn(async () => ({ estimatedDryingHours: 1 })),
+  leaveHouse: vi.fn(async () => ({ estimatedDryingHours: 1 })),
+  arriveHouse: vi.fn(async () => undefined),
+  hangLaundryEvidence: vi.fn(async () => ({ estimatedDryingHours: 1 })),
   laundryPositionFromAC: vi.fn(async () => {}),
   setUpHouseConfig: vi.fn(async () => {}),
 } satisfies CoreApi;
@@ -20,7 +20,7 @@ test("「いってきます」ボタンでleaveHouseを呼ぶ", async () => {
   const messages = await handlePostback(POSTBACK_DATA.leaveHouse, core);
   expect(core.leaveHouse).toHaveBeenCalledOnce();
   expect(messages).toEqual([
-    { type: "text", text: "いってらっしゃい！\n洗濯物の乾燥を始めます。" },
+    { type: "text", text: "いってらっしゃい！\n洗濯物の乾燥を始めます。\n乾燥完了までの目安：あと約1時間です。" },
   ]);
 });
 
@@ -85,7 +85,7 @@ test("写真を受け取るとhangLaundryEvidenceに渡す", async () => {
 
 test("「洗濯したよ」でstartDryingを呼ぶ", async () => {
   expect(await handleText("洗濯したよ", core)).toEqual([
-    { type: "text", text: "乾燥を開始しました！" },
+    { type: "text", text: "乾燥を開始しました！\n乾燥完了までの目安：あと約1時間です。" },
   ]);
   expect(core.startDrying).toHaveBeenCalledOnce();
 });

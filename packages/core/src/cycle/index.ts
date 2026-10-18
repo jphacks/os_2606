@@ -29,9 +29,9 @@ export interface CycleEstimate {
 /** 同じインスタンスを handler 間で共有する。 */
 export interface Cycle {
   /** 「洗濯したよ」で室内モード・進捗0から開始する。乾燥中の重複操作は無視する。 */
-  startDrying(): Promise<CycleEstimate | void>;
+  startDrying(): Promise<CycleEstimate>;
   /** 洗濯済みとして外出モードで開始する。乾燥中なら進捗を引き継いで切り替える。 */
-  leaveHouse(): Promise<CycleEstimate | void>;
+  leaveHouse(): Promise<CycleEstimate>;
   /** 乾燥中の運転を室内モードに切り替える。未開始・完了後は何もしない。 */
   arriveHouse(): Promise<CycleEstimate | void>;
   /** アプリケーション終了時に cron を破棄する。エアコンは停止しない。 */
@@ -103,7 +103,7 @@ export function createCycle(options: CycleOptions, dependencies: Partial<CycleDe
     }
   });
 
-  async function planOperation(presenceMode: PresenceMode): Promise<void> {
+  async function planOperation(presenceMode: PresenceMode): Promise<CycleEstimate> {
     const context = await options.getContext();
     const observedAt = now();
     const observation: EnvironmentObservation = {
@@ -144,35 +144,39 @@ export function createCycle(options: CycleOptions, dependencies: Partial<CycleDe
       stopped: plan.mode === "off",
     };
     await task.start();
+    return currentEstimate(running);
   }
 
-  function currentEstimate(): CycleEstimate | undefined {
-    if (!running) return;
-    return { estimatedDryingHours: Math.max(0, (running.finishesAt - now()) / 3_600_000) };
+  function currentEstimate(cycle: RunningCycle): CycleEstimate {
+    return { estimatedDryingHours: Math.max(0, (cycle.finishesAt - now()) / 3_600_000) };
   }
 
-  function changePresence(presenceMode: PresenceMode): Promise<CycleEstimate | void> {
-    return enqueue(async () => {
-      if (disposed) throw new Error("乾燥サイクルは破棄されています。");
-      await finishIfDue();
-      if (!running && presenceMode === "home") return;
-      if (running?.presenceMode === presenceMode) return currentEstimate();
-      await planOperation(presenceMode);
-      return currentEstimate();
-    });
+  async function prepareOperation(): Promise<void> {
+    if (disposed) throw new Error("乾燥サイクルは破棄されています。");
+    await finishIfDue();
+  }
+
+  async function changePresence(presenceMode: PresenceMode): Promise<CycleEstimate> {
+    if (running?.presenceMode === presenceMode) return currentEstimate(running);
+    return planOperation(presenceMode);
   }
 
   return {
     startDrying: () => enqueue(async () => {
-      if (disposed) throw new Error("乾燥サイクルは破棄されています。");
       // 通知待ちのサイクルを新しい洗濯で上書きしない。
-      await finishIfDue();
-      if (running) return currentEstimate();
-      await planOperation("home");
-      return currentEstimate();
+      await prepareOperation();
+      if (running) return currentEstimate(running);
+      return planOperation("home");
     }),
-    leaveHouse: () => changePresence("away"),
-    arriveHouse: () => changePresence("home"),
+    leaveHouse: () => enqueue(async () => {
+      await prepareOperation();
+      return changePresence("away");
+    }),
+    arriveHouse: () => enqueue(async () => {
+      await prepareOperation();
+      if (!running) return;
+      return changePresence("home");
+    }),
     dispose: () => enqueue(async () => {
       disposed = true;
       await task.destroy();

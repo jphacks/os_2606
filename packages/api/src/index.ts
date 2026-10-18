@@ -35,16 +35,16 @@ export interface DryingEstimate {
 /** LINEから呼び出す、coreが提供するAPI。 */
 export interface CoreApi {
   /** 洗濯物を干し、在宅モードで乾燥を開始する。 */
-  startDrying(): Promise<DryingEstimate | void>;
+  startDrying(): Promise<DryingEstimate>;
 
   /** 外出を通知する。 */
-  leaveHouse(): Promise<DryingEstimate | void>;
+  leaveHouse(): Promise<DryingEstimate>;
 
   /** 帰宅ボタンが押されたことを通知する。 */
   arriveHouse(): Promise<DryingEstimate | void>;
 
   /** 洗濯物を干したことを画像で伝える。 */
-  hangLaundryEvidence(image: Image): Promise<DryingEstimate | void>;
+  hangLaundryEvidence(image: Image): Promise<DryingEstimate>;
 
   /** エアコンから見た洗濯物の位置を伝える。 */
   laundryPositionFromAC(position: "left" | "center" | "right"): Promise<void>;
