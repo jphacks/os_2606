@@ -27,7 +27,7 @@ const config = {
   // 実機に除湿・風量調整がない場合などは、その候補を除外する。
   capabilities: {
     modes: ["cool", "heat"] as const,
-    fanSpeeds: { cool: ["low", "high"] as const, heat: ["low"] as const, dry: [] },
+    fanSpeeds: { cool: ["low", "high"] as const, heat: ["low"] as const, dehumidify: [] },
     allowOff: true,
   },
 };

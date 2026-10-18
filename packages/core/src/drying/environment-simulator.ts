@@ -46,7 +46,7 @@ export function simulateEnvironment(context: DryingContext, operation: Operation
       switch (operation.mode) {
         case "cool": target = Math.min(temperature, operation.temperature); break;
         case "heat": target = Math.max(temperature, operation.temperature); break;
-        case "dry": target = operation.temperature; break;
+        case "dehumidify": target = operation.temperature; break;
         default: {
           const exhaustive: never = operation;
           throw new RangeError(`Unsupported mode: ${exhaustive}`);
