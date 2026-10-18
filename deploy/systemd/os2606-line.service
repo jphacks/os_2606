@@ -1,0 +1,29 @@
+[Unit]
+Description=os_2606 LINE webhook server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=exec
+User=os2606
+Group=os2606
+WorkingDirectory=/opt/os_2606/app
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/opt/os_2606/shared/.env
+ExecStart=/usr/bin/env node packages/line/dist/server.js
+ExecStartPost=/usr/bin/curl --fail --silent --show-error --output /dev/null --retry 15 --retry-connrefused --retry-delay 1 --retry-max-time 15 --max-time 2 http://127.0.0.1:${PORT}/healthz
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/os_2606/shared
+
+[Install]
+WantedBy=multi-user.target

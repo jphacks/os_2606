@@ -21,6 +21,10 @@ export function createLineBot(
   const app = express();
   const client = LineBotClient.fromChannelAccessToken({ channelAccessToken });
 
+  app.get("/healthz", (_request, response) => {
+    response.status(200).type("text/plain").send("ok");
+  });
+
   // 写真はLINEのサーバーに置かれているので、ダウンロードする
   async function downloadImage(messageId: string): Promise<Image> {
     const { httpResponse, body } =

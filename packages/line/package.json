@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "start": "node dist/server.js",
+    "start": "pnpm --workspace-root start",
     "setup:rich-menu": "node dist/setup-rich-menu.js",
     "test": "vitest run"
   },

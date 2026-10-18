@@ -53,6 +53,13 @@ function sign(body: string): string {
   return createHmac("sha256", channelSecret).update(body).digest("base64");
 }
 
+test("起動確認は認証情報を返さずLINEにもアクセスしない", async () => {
+  const response = await fetch(new URL("/healthz", webhookUrl));
+  expect(response.status).toBe(200);
+  expect(await response.text()).toBe("ok");
+  expect(replyMessage).not.toHaveBeenCalled();
+});
+
 async function postWebhook(
   body: string,
   signature?: string,

@@ -14,6 +14,7 @@ Raspberry Piの標準DHT11ドライバーを利用します。アプリ側はTyp
 | GND | GND（物理ピン6） |
 
 リポジトリのルートにある`.env`に`DHT_GPIO=4`を設定します。
+LINEの認証情報も同じ`.env`で管理します。Piへのデプロイ後は`/opt/os_2606/shared/.env`を編集してください。
 赤外線受信の既定値GPIO17との重複を避けるため、温湿度センサーにはGPIO4を使います。
 GPIO番号を変える場合は、配線・`.env`・以下のドライバー設定を同じ番号に揃えてください。
 
@@ -98,7 +99,7 @@ Node.js 22.6以降とpnpm 10以降を用意し、`ir-ctl` を含む `v4l-utils` 
 sudo apt install v4l-utils
 pnpm install
 pnpm --filter @os/sensor build
-cp .env.example .env
+test -e .env || cp .env.example .env
 pnpm ir boot-config
 ```
 

@@ -1,0 +1,1 @@
+os2606 ALL=(root) NOPASSWD: /usr/bin/systemctl restart os2606-line.service, /usr/bin/systemctl stop os2606-line.service

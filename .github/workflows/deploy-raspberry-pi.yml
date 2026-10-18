@@ -1,0 +1,113 @@
+name: Deploy to Raspberry Pi
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 転送・切り替え中のデプロイを次のpushで中断しない。
+concurrency:
+  group: raspberry-pi-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: raspberry-pi
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build and test
+        run: |
+          pnpm build
+          pnpm test
+          systemd-analyze verify deploy/systemd/os2606-line.service
+          sudo visudo -cf deploy/systemd/os2606-line.sudoers
+
+      - name: Package application
+        run: |
+          tar -czf "$RUNNER_TEMP/app.tar.gz" \
+            package.json pnpm-lock.yaml pnpm-workspace.yaml .env.example \
+            packages/*/package.json packages/*/dist
+
+      - name: Validate deployment settings
+        env:
+          RPI_HOST: ${{ vars.RPI_HOST }}
+          RPI_USER: ${{ vars.RPI_USER }}
+          RPI_DEPLOY_PATH: ${{ vars.RPI_DEPLOY_PATH || '/opt/os_2606' }}
+          TS_CLIENT_ID: ${{ vars.TS_CLIENT_ID }}
+          TS_AUDIENCE: ${{ vars.TS_AUDIENCE }}
+        run: |
+          : "${TS_CLIENT_ID:?Set the TS_CLIENT_ID Actions variable.}"
+          : "${TS_AUDIENCE:?Set the TS_AUDIENCE Actions variable.}"
+          [[ "$RPI_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]] || { echo 'Set RPI_HOST to a Tailscale name or IPv4 address.' >&2; exit 1; }
+          [[ "$RPI_USER" =~ ^[a-z_][a-z0-9_-]*$ && "$RPI_USER" != root ]] || { echo 'Set RPI_USER to a non-root Linux user.' >&2; exit 1; }
+          [[ "$RPI_DEPLOY_PATH" =~ ^/[a-zA-Z0-9_./-]+$ && "$RPI_DEPLOY_PATH" != / ]] || { echo 'Set RPI_DEPLOY_PATH to an absolute path without spaces.' >&2; exit 1; }
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4
+        with:
+          oauth-client-id: ${{ vars.TS_CLIENT_ID }}
+          audience: ${{ vars.TS_AUDIENCE }}
+          tags: tag:os2606-ci
+
+      - name: Deploy over Tailscale SSH
+        env:
+          RPI_HOST: ${{ vars.RPI_HOST }}
+          RPI_USER: ${{ vars.RPI_USER }}
+          RPI_DEPLOY_PATH: ${{ vars.RPI_DEPLOY_PATH || '/opt/os_2606' }}
+        run: |
+          # 古い実行の再試行によってmainの最新版を上書きしない。
+          latest_sha=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [[ "$latest_sha" != "$GITHUB_SHA" ]]; then
+            echo 'Skipping deployment because main has a newer commit.'
+            exit 0
+          fi
+
+          target="$RPI_USER@$RPI_HOST"
+          tailscale ssh "$target" "cat > '$RPI_DEPLOY_PATH/app.tar.gz'" < "$RUNNER_TEMP/app.tar.gz"
+          tailscale ssh "$target" "bash -se -- '$RPI_DEPLOY_PATH'" <<'REMOTE'
+          deploy_root=$(realpath -e -- "$1")
+          test -r "$deploy_root/shared/.env"
+          command -v pnpm >/dev/null
+          if [[ "$(systemctl show --property=WorkingDirectory --value os2606-line.service)" != "$deploy_root/app" ]]; then
+            echo 'Install the updated os2606-line.service and run systemctl daemon-reload first.' >&2
+            exit 1
+          fi
+          sudo -n -l /usr/bin/systemctl restart os2606-line.service >/dev/null
+          tar -tzf "$deploy_root/app.tar.gz" >/dev/null
+          mkdir -p "$deploy_root/app" "$deploy_root/shared/data"
+
+          sudo -n /usr/bin/systemctl stop os2606-line.service
+          cd "$deploy_root/app"
+          # 配布済みコードを入れ替え、削除されたファイルも残さない。
+          rm -rf packages
+          tar -xzf "$deploy_root/app.tar.gz" --no-same-owner --no-same-permissions
+          ln -sfn "$deploy_root/shared/.env" .env
+          ln -sfn "$deploy_root/shared/data" data
+          CI=true pnpm install --prod --frozen-lockfile --ignore-scripts
+          sudo -n /usr/bin/systemctl restart os2606-line.service
+          rm -f "$deploy_root/app.tar.gz"
+          REMOTE
