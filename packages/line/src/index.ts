@@ -1,29 +1,57 @@
-import { JSONParseError, LineBotClient, middleware, SignatureValidationFailed } from "@line/bot-sdk";
+import {
+  JSONParseError,
+  LineBotClient,
+  middleware,
+  SignatureValidationFailed,
+} from "@line/bot-sdk";
 import type { webhook } from "@line/bot-sdk";
+import type { CoreApi } from "@os/api";
 import express from "express";
 import type { ErrorRequestHandler, Express } from "express";
 
 export { createLineApi } from "./line-api.js";
 
-export function createLineBot(channelSecret: string, channelAccessToken: string): Express {
+export function createLineBot(
+  channelSecret: string,
+  channelAccessToken: string,
+  core: CoreApi,
+): Express {
   const app = express();
   const client = LineBotClient.fromChannelAccessToken({ channelAccessToken });
 
-  app.post("/webhook", middleware({ channelSecret }), async (request, response) => {
-    const body: webhook.CallbackRequest = request.body;
-    for (const event of body.events) {
-      if (event.type !== "message" || event.message.type !== "text" || !event.replyToken) {
-        continue;
+  app.post(
+    "/webhook",
+    middleware({ channelSecret }),
+    async (request, response) => {
+      const body: webhook.CallbackRequest = request.body;
+      for (const event of body.events) {
+        if (
+          event.type !== "message" ||
+          event.message.type !== "text" ||
+          !event.replyToken
+        ) {
+          continue;
+        }
+        let replyText = event.message.text;
+        if (event.message.text.trim() === "いってきます") {
+          await core.leaveHouse();
+          replyText = "いってらっしゃい！";
+        }
+        await client.replyMessage({
+          replyToken: event.replyToken,
+          messages: [{ type: "text", text: replyText }],
+        });
       }
-      await client.replyMessage({
-        replyToken: event.replyToken,
-        messages: [{ type: "text", text: event.message.text }],
-      });
-    }
-    response.sendStatus(200);
-  });
+      response.sendStatus(200);
+    },
+  );
 
-  const handleError: ErrorRequestHandler = (error: unknown, _request, response, next) => {
+  const handleError: ErrorRequestHandler = (
+    error: unknown,
+    _request,
+    response,
+    next,
+  ) => {
     if (error instanceof SignatureValidationFailed) {
       response.sendStatus(401);
       return;
