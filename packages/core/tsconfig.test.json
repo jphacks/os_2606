@@ -6,7 +6,10 @@
     "declaration": false,
     "declarationMap": false,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@os/core/drying": ["./src/drying/index.ts"]
+    }
   },
   "include": [
     "src",
