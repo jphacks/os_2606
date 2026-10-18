@@ -1,9 +1,11 @@
+import { mockCore } from "./mock-core.js";
 import type { CoreApi } from "@os/api";
 import { beforeEach, expect, test, vi } from "vitest";
 import { handleImage, handlePostback, handleText } from "./command.js";
 import { POSTBACK_DATA } from "./postback-data.js";
 
 const core = {
+  simulateDryingPlan: vi.fn(mockCore.simulateDryingPlan),
   startDrying: vi.fn(async () => ({ estimatedDryingHours: 1 })),
   leaveHouse: vi.fn(async () => ({ estimatedDryingHours: 1 })),
   arriveHouse: vi.fn(async () => undefined),

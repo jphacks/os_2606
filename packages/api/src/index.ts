@@ -32,13 +32,37 @@ export interface DryingEstimate {
   estimatedDryingHours: number;
 }
 
-export type DryingPlan = DryingEstimate & { presenceMode: "home" | "away" } & (
+export type AirconPlan = DryingEstimate & (
   | { mode: "off" }
-  | { mode: AcMessage["acMode"]; temperature: number; fanSpeed?: AcMessage["fanSpeed"] }
+  | { mode: "cool" | "heat"; temperature: number; fanSpeed: NonNullable<AcMessage["fanSpeed"]> }
+  | { mode: "dehumidify"; temperature: number; fanSpeed?: NonNullable<AcMessage["fanSpeed"]> }
 );
+export type DryingPlan = AirconPlan & { presenceMode: "home" | "away" };
+
+export interface DryingSimulation {
+  initialContext: {
+    indoorTemperature: number;
+    indoorHumidity: number;
+    outdoorTemperature: number;
+    outdoorHumidity: number;
+    presenceMode: "home" | "away";
+  };
+  durationMinutes: 360;
+  completedAtMinute: number | null;
+  steps: {
+    startMinute: number;
+    endMinute: number;
+    decision: AirconPlan;
+    indoorTemperature: number;
+    indoorHumidity: number;
+    dryingProgress: number;
+  }[];
+}
 
 /** LINEから呼び出す、coreが提供するAPI。 */
 export interface CoreApi {
+  /** 現在の環境と乾燥進捗で6時間分を試算する。実機操作や状態変更はしない。 */
+  simulateDryingPlan(): Promise<DryingSimulation>;
   /** 洗濯物を干し、在宅モードで乾燥を開始する。 */
   startDrying(): Promise<DryingEstimate>;
 

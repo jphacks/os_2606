@@ -29,13 +29,14 @@ export function createLineApi(channelAccessToken: string): LineApi {
         case "dehumidify": {
           const modeName = { cool: "冷房", heat: "暖房", dehumidify: "除湿" }[plan.mode];
           let fan: string;
-          switch (plan.fanSpeed) {
+          const fanSpeed = plan.fanSpeed;
+          switch (fanSpeed) {
             case "low": fan = "弱"; break;
             case "medium": fan = "中"; break;
             case "high": fan = "強"; break;
             case undefined: fan = "自動"; break;
             default: {
-              const exhaustiveCheck: never = plan.fanSpeed;
+              const exhaustiveCheck: never = fanSpeed;
               return exhaustiveCheck;
             }
           }

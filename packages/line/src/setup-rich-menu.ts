@@ -25,6 +25,6 @@ async function readImage(name: string): Promise<Blob> {
 const client = LineBotClient.fromChannelAccessToken({ channelAccessToken });
 await setupRichMenus(client, {
   outing: await readImage("rich-menu-outing.png"),
-  laundry: await readImage("rich-menu-laundry.png"),
+  laundry: await readImage("rich-menu-laundry-simulation.png"),
 });
 console.log("リッチメニューを登録しました。");

@@ -2,6 +2,7 @@ import type { messagingApi } from "@line/bot-sdk";
 import type { CoreApi, DryingEstimate, Image } from "@os/api";
 import {
   dryingEstimateText,
+  dryingSimulationMessage,
   laundryPhotoRequestMessage,
   laundryPositionMessage,
   menuGuideMessage,
@@ -21,6 +22,8 @@ export async function handlePostback(
   core: CoreApi,
 ): Promise<messagingApi.Message[]> {
   switch (data) {
+    case POSTBACK_DATA.simulateDryingPlan:
+      return [dryingSimulationMessage(await core.simulateDryingPlan())];
     case POSTBACK_DATA.leaveHouse:
       return [withEstimate("いってらっしゃい！\n洗濯物の乾燥を始めます。", await core.leaveHouse())];
     case POSTBACK_DATA.arriveHouse:
