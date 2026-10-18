@@ -48,5 +48,3 @@ export interface LineApi {
   /** 乾燥の完了を通知する。 */
   sendNotificationFinishDrying(): Promise<void>;
 }
-
-export * from "./drying-cycle.js";
