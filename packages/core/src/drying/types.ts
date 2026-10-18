@@ -1,4 +1,4 @@
-export type AirconMode = "cool" | "heat" | "dry";
+export type AirconMode = "cool" | "heat" | "dehumidify";
 export type FanSpeed = "low" | "medium" | "high";
 export type PresenceMode = "home" | "away";
 

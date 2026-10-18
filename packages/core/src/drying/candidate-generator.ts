@@ -19,7 +19,7 @@ export function generateOperationCandidates(context: DryingContext, config: Dryi
         }
         break;
       }
-      case "dry":
+      case "dehumidify":
         // 除湿の温度は現在室温相当。命令温度の安全範囲を超える場合は丸める。
         temperatures.push(Math.min(MAX_SETPOINT, Math.max(MIN_SETPOINT, context.indoorTemperature)));
         break;
