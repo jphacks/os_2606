@@ -15,7 +15,7 @@ export function evaluateOperations(context: DryingContext, config: DryingConfig 
     if (maximumGain > 0) normalizedGain = result.estimatedProgressGain / maximumGain;
     let comfortPenalty = 0;
     if (context.presenceMode === "home" && result.operation.mode !== "off") {
-      comfortPenalty = config.simulator.fanComfortPenalty[result.operation.fanSpeed];
+      comfortPenalty = config.simulator.fanComfortPenalty[result.operation.fanSpeed ?? "medium"];
     }
     // 温度差2℃の二乗を基準に、快適性も0〜1未満へ単調に正規化する。
     // 二乗誤差をそのまま加えて乾燥の評価を圧倒することを避ける。

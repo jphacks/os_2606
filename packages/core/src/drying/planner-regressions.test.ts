@@ -17,6 +17,26 @@ const coolingOnly: DryingConfig = {
 };
 
 describe("運転計画の完了予測と採点の回帰テスト", () => {
+  it("自動風量しか受け付けない機種でも除湿を計画し、風量を省略する", () => {
+    const context: DryingContext = {
+      indoorTemperature: 24, indoorHumidity: 70, outdoorTemperature: 18, outdoorHumidity: 60, presenceMode: "home",
+    };
+    const config: DryingConfig = {
+      ...DEFAULT_DRYING_CONFIG,
+      capabilities: { ...DEFAULT_DRYING_CONFIG.capabilities, allowAutomaticDehumidify: true },
+      isOperationSupported: (operation) => operation.mode === "dehumidify" && !("fanSpeed" in operation),
+    };
+    const plan = decideNextOperation(context, config);
+    expect(plan).toMatchObject({ mode: "dehumidify", temperature: 24 });
+    expect(plan).not.toHaveProperty("fanSpeed");
+    expect(Number.isFinite(plan.estimatedDryingHours)).toBe(true);
+    expect(simulateEnvironment(context, plan, config)).toEqual(
+      simulateEnvironment(context, { mode: "dehumidify", temperature: 24, fanSpeed: "medium" }),
+    );
+    expect(() => decideNextOperation(context, {
+      ...config, capabilities: { ...config.capabilities, allowAutomaticDehumidify: false },
+    })).toThrow("No supported operation candidates");
+  });
   it("実機が送信できる設定だけから選び、候補がなければエラーにする", () => {
     const config: DryingConfig = {
       ...DEFAULT_DRYING_CONFIG,

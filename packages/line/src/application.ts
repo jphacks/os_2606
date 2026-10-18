@@ -1,4 +1,5 @@
 import { loadRemoteControl, loadTemperatureSensor } from "@os/sensor";
+import type { AcMessage } from "@os/api";
 import { DEFAULT_DRYING_CONFIG } from "@os/core/drying";
 import { createLineBot } from "./index.js";
 import { createLineApi } from "./line-api.js";
@@ -62,11 +63,19 @@ export async function createApplication(config: ApplicationConfig) {
     comfortTemperature: config.comfortTemperature,
     dryingConfig: {
       ...DEFAULT_DRYING_CONFIG,
+      capabilities: { ...DEFAULT_DRYING_CONFIG.capabilities, allowAutomaticDehumidify: true },
       isOperationSupported(operation) {
         if (operation.mode === "off") return true;
-        return remoteControl.supports({
-          acMode: operation.mode, temperature: operation.temperature, fanSpeed: operation.fanSpeed,
-        });
+        const message: AcMessage = { acMode: operation.mode, temperature: operation.temperature };
+        if (operation.fanSpeed !== undefined) {
+          message.fanSpeed = operation.fanSpeed;
+        } else {
+          // 省略時に「前回の風量を維持」する方式もある。自動候補は手動指定できない機種に限る。
+          for (const fanSpeed of DEFAULT_DRYING_CONFIG.capabilities.fanSpeeds.dehumidify) {
+            if (remoteControl.supports({ ...message, fanSpeed })) return false;
+          }
+        }
+        return remoteControl.supports(message);
       },
     },
     onFinishDrying: () => line.sendNotificationFinishDrying(),

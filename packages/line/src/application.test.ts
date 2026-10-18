@@ -1,6 +1,7 @@
 import { LineBotClient } from "@line/bot-sdk";
 import type { CycleOptions } from "@os/core";
-import { decideNextOperation } from "@os/core/drying";
+import type { AcMessage } from "@os/api";
+import { decideNextOperation, DEFAULT_DRYING_CONFIG } from "@os/core/drying";
 import { createHmac } from "node:crypto";
 import { once } from "node:events";
 import { createServer } from "node:http";
@@ -10,7 +11,7 @@ import { createApplication, readApplicationConfig } from "./application.js";
 const hardware = vi.hoisted(() => ({
   now: 0,
   tick: async () => {},
-  remote: { supports: vi.fn(() => true), send: vi.fn(async () => {}), stop: vi.fn(async () => {}) },
+  remote: { supports: vi.fn((_message: AcMessage) => true), send: vi.fn(async () => {}), stop: vi.fn(async () => {}) },
   sensor: { measure: vi.fn(async () => ({ temperature: 24, humidity: 70 })) },
   loadRemote: vi.fn(),
   loadSensor: vi.fn(),
@@ -65,11 +66,16 @@ test.each([
   expect(() => readApplicationConfig({ ...env, [name]: value })).toThrow(name);
 });
 
-test("起動時に取得した実機APIにWebhookから到達し、停止後に設定したユーザーへ完了通知する", async () => {
+test.each([false, true])("Webhookから送信・停止・通知まで実行する（自動除湿のみ対応=%s）", async (automaticOnly) => {
+  if (automaticOnly) {
+    // Sharpと同じく、除湿ではfanSpeedというプロパティ自体を受け付けない。
+    hardware.remote.supports.mockImplementation((message) => message.acMode === "dehumidify" && !("fanSpeed" in message));
+  }
   const reply = vi.spyOn(LineBotClient.prototype, "replyMessage").mockResolvedValue({ sentMessages: [] });
   const push = vi.spyOn(LineBotClient.prototype, "pushMessage").mockResolvedValue({ sentMessages: [] });
   const config = readApplicationConfig(env);
   const application = await createApplication(config);
+  expect(hardware.sensor.measure).toHaveBeenCalledOnce();
   const server = createServer(application.app);
   try {
     server.listen(0, "127.0.0.1");
@@ -94,14 +100,29 @@ test("起動時に取得した実機APIにWebhookから到達し、停止後に�
     expect(hardware.loadSensor).toHaveBeenCalledOnce();
     expect(hardware.sensor.measure).toHaveBeenCalledTimes(2);
     expect(hardware.remote.supports).toHaveBeenCalled();
-    const expected = decideNextOperation({
+    const context = {
       indoorTemperature: 24, indoorHumidity: 70, outdoorTemperature: 18, outdoorHumidity: 60,
-      comfortTemperature: 24, presenceMode: "home", dryingProgress: 0,
-    });
+      comfortTemperature: 24, presenceMode: "home" as const, dryingProgress: 0,
+    };
+    let expected = decideNextOperation(context);
+    if (automaticOnly) {
+      expected = decideNextOperation(context, {
+        ...DEFAULT_DRYING_CONFIG,
+        capabilities: {
+          modes: ["dehumidify"], fanSpeeds: { cool: [], heat: [], dehumidify: [] },
+          allowOff: false, allowAutomaticDehumidify: true,
+        },
+      });
+    }
     if (expected.mode === "off") throw new Error("在宅の初回計画で停止は選ばれません。");
-    expect(hardware.remote.send).toHaveBeenCalledExactlyOnceWith({
-      acMode: expected.mode, temperature: expected.temperature, fanSpeed: expected.fanSpeed,
-    });
+    if (automaticOnly) {
+      expect(hardware.remote.supports).toHaveBeenCalledWith({ acMode: "dehumidify", temperature: 24 });
+      expect(hardware.remote.send).toHaveBeenCalledExactlyOnceWith({ acMode: "dehumidify", temperature: 24 });
+    } else {
+      expect(hardware.remote.send).toHaveBeenCalledExactlyOnceWith({
+        acMode: expected.mode, temperature: expected.temperature, fanSpeed: expected.fanSpeed,
+      });
+    }
     expect(reply).toHaveBeenCalledOnce();
     hardware.now = expected.estimatedDryingHours * 3_600_000;
     await hardware.tick();

@@ -32,6 +32,10 @@ export function validateContext(context: DryingContext): void {
 }
 
 export function validateConfig(config: DryingConfig): void {
+  if (config.capabilities.allowAutomaticDehumidify !== undefined &&
+      typeof config.capabilities.allowAutomaticDehumidify !== "boolean") {
+    throw new RangeError("allowAutomaticDehumidify must be boolean");
+  }
   assertRange(config.dryingWeight, 0, 1, "dryingWeight");
   assertRange(config.defaultComfortTemperature, MIN_SETPOINT, MAX_SETPOINT, "defaultComfortTemperature");
   assertRange(config.evaluationMinutes, 1, MINUTES_PER_HOUR, "evaluationMinutes");
@@ -69,9 +73,15 @@ export function validateOperation(operation: Operation, context: DryingContext, 
     }
     return;
   }
-  if (!config.capabilities.modes.includes(operation.mode) ||
-      !config.capabilities.fanSpeeds[operation.mode].includes(operation.fanSpeed)) {
+  if (!config.capabilities.modes.includes(operation.mode)) {
     throw new RangeError("Unsupported operation");
+  }
+  if (operation.fanSpeed === undefined) {
+    if (operation.mode !== "dehumidify" || config.capabilities.allowAutomaticDehumidify !== true) {
+      throw new RangeError("Automatic dehumidify is not allowed");
+    }
+  } else if (!config.capabilities.fanSpeeds[operation.mode].includes(operation.fanSpeed)) {
+    throw new RangeError("Unsupported fan speed");
   }
   assertRange(operation.temperature, MIN_SETPOINT, MAX_SETPOINT, "setpoint");
   switch (operation.mode) {
