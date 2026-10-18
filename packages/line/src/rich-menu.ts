@@ -74,25 +74,13 @@ export const laundryRichMenu: messagingApi.RichMenuRequest = {
 };
 
 // 2枚のリッチメニューをLINEに登録し、「おでかけ」を最初に表示するメニューにする。
-// 何度実行してもよいように、前に登録したものは消してから作り直す。
+// 新しい画像と表示先を登録してから、前に登録したメニューを削除する。
 export async function setupRichMenus(
   client: LineBotClient,
   images: { outing: Blob; laundry: Blob },
 ): Promise<void> {
-  const aliasIds: string[] = Object.values(ALIAS);
   const { aliases } = await client.getRichMenuAliasList();
-  for (const alias of aliases) {
-    if (aliasIds.includes(alias.richMenuAliasId)) {
-      await client.deleteRichMenuAlias(alias.richMenuAliasId);
-    }
-  }
-  const names = [outingRichMenu.name, laundryRichMenu.name];
   const { richmenus } = await client.getRichMenuList();
-  for (const menu of richmenus) {
-    if (names.includes(menu.name)) {
-      await client.deleteRichMenu(menu.richMenuId);
-    }
-  }
 
   const { richMenuId: outingId } = await client.createRichMenu(outingRichMenu);
   await client.setRichMenuImage(outingId, images.outing);
@@ -100,13 +88,22 @@ export async function setupRichMenus(
     await client.createRichMenu(laundryRichMenu);
   await client.setRichMenuImage(laundryId, images.laundry);
 
-  await client.createRichMenuAlias({
-    richMenuAliasId: ALIAS.outing,
-    richMenuId: outingId,
-  });
-  await client.createRichMenuAlias({
-    richMenuAliasId: ALIAS.laundry,
-    richMenuId: laundryId,
-  });
+  for (const [richMenuAliasId, richMenuId] of [
+    [ALIAS.outing, outingId],
+    [ALIAS.laundry, laundryId],
+  ] as const) {
+    if (aliases.some((alias) => alias.richMenuAliasId === richMenuAliasId)) {
+      await client.updateRichMenuAlias(richMenuAliasId, { richMenuId });
+    } else {
+      await client.createRichMenuAlias({ richMenuAliasId, richMenuId });
+    }
+  }
   await client.setDefaultRichMenu(outingId);
+
+  const names = [outingRichMenu.name, laundryRichMenu.name];
+  for (const menu of richmenus) {
+    if (names.includes(menu.name)) {
+      await client.deleteRichMenu(menu.richMenuId);
+    }
+  }
 }

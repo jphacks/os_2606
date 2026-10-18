@@ -1,8 +1,8 @@
 # @os/line
 
-LINE Messaging APIのWebhookを受信し、テキストをそのまま返信するBotと、Coreから呼び出す乾燥完了通知APIを提供します。
+LINE Messaging APIのWebhookを受信し、リッチメニューの操作や洗濯物の写真に応答するBotと、Coreから呼び出す乾燥完了通知APIを提供します。
 `POST /webhook`で署名を検証し、返信が完了したらHTTP 200を返します。
-画像などのテキスト以外のイベントや、返信トークンのないイベントは受信確認だけを行います。
+スタンプなどの未対応イベントや、返信トークンのないイベントは受信確認だけを行います。
 
 ## 起動
 
@@ -22,10 +22,11 @@ GPIOなどのセンサー設定も同じファイルで管理します。LINEサ
 
 ```sh
 pnpm --filter @os/line build
+pnpm setup:rich-menu
 pnpm start
 ```
 
-`pnpm start`と`pnpm --filter @os/line start`は、どちらもルートの`.env`を読み込みます。
+`pnpm start`と`pnpm --filter @os/line start`、リッチメニュー登録コマンドは、いずれもルートの`.env`を読み込みます。
 既存の環境変数が優先され、環境変数だけで設定する場合は`.env`は不要です。
 以前の`packages/line/.env`を使用している場合は、認証情報とポートをルートの`.env`へ移してください。
 
@@ -42,9 +43,20 @@ Raspberry Piでのsystemdによる自動起動・デプロイ時の再起動は[
 3. Webhook URLの「検証」を実行し、「Webhookの利用」を有効にします。
 
 署名がない、または一致しないリクエストにはHTTP 401、不正なJSONにはHTTP 400を返します。
-Botにテキストを送ると同じ内容を返信します。LINE公式アカウント側の自動返信を止める場合は、応答メッセージやあいさつメッセージも無効にしてください。
+Botにテキストを送ると画面下のメニューを案内します。LINE公式アカウント側の自動返信を止める場合は、応答メッセージやあいさつメッセージも無効にしてください。
 
 署名検証には[公式LINE Bot SDKのWebhookミドルウェア](https://line.github.io/line-bot-sdk-nodejs/guide/webhook.html)を使っています。
+
+## リッチメニューの登録
+
+サーバーを起動するだけではメニューは表示されません。初回起動前やメニュー・画像を変更したときは、ビルド後にルートで`pnpm setup:rich-menu`を実行してください。
+`pnpm --filter @os/line setup:rich-menu`も同じ設定・画像を使用します。
+「おでかけ」「洗濯物」の画像とタブ切り替えを登録し、「おでかけ」をデフォルトのメニューに設定します。
+更新時は新しい画像と表示先を登録してから古いメニューを削除します。
+
+Raspberry PiへのGitHub Actionsデプロイでは、画像の配布とこの登録処理を自動で行います。
+表示されない場合は、登録が成功していることを確認してからスマートフォン版LINEのトーク画面を開き直し、画面下の「メニュー」をタップしてください。
+[リッチメニューはPC版LINEでは表示されません](https://developers.line.biz/ja/docs/messaging-api/rich-menus-overview/)。
 
 ## Coreから乾燥完了を通知する
 

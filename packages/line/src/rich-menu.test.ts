@@ -49,15 +49,15 @@ test.each(menus)(
   },
 );
 
-test("前に登録したものを消してから2枚を登録し、「おでかけ」を最初に表示する", async () => {
-  const client = {
+function createClient() {
+  return {
     getRichMenuAliasList: vi.fn(async () => ({
       aliases: [
         { richMenuAliasId: "tab-outing", richMenuId: "old-1" },
         { richMenuAliasId: "other-team-alias", richMenuId: "other" },
       ],
     })),
-    deleteRichMenuAlias: vi.fn(async () => ({})),
+    updateRichMenuAlias: vi.fn(async () => ({})),
     getRichMenuList: vi.fn(async () => ({
       richmenus: [
         { richMenuId: "old-1", name: "おでかけ" },
@@ -73,12 +73,17 @@ test("前に登録したものを消してから2枚を登録し、「おでか�
     createRichMenuAlias: vi.fn(async () => ({})),
     setDefaultRichMenu: vi.fn(async () => ({})),
   };
+}
+
+test("2枚を登録して表示先を切り替えた後に古いメニューを削除する", async () => {
+  const client = createClient();
   const images = { outing: new Blob(["a"]), laundry: new Blob(["b"]) };
 
   await setupRichMenus(client as unknown as LineBotClient, images);
 
-  expect(client.deleteRichMenuAlias).toHaveBeenCalledExactlyOnceWith(
+  expect(client.updateRichMenuAlias).toHaveBeenCalledExactlyOnceWith(
     "tab-outing",
+    { richMenuId: "new-outing" },
   );
   expect(client.deleteRichMenu).toHaveBeenCalledExactlyOnceWith("old-1");
   expect(client.setRichMenuImage).toHaveBeenCalledWith(
@@ -96,4 +101,48 @@ test("前に登録したものを消してから2枚を登録し、「おでか�
   expect(client.setDefaultRichMenu).toHaveBeenCalledExactlyOnceWith(
     "new-outing",
   );
+  expect(client.deleteRichMenu.mock.invocationCallOrder[0]).toBeGreaterThan(
+    client.setDefaultRichMenu.mock.invocationCallOrder[0]!,
+  );
 });
+
+test("初回は両方のタブを新規登録する", async () => {
+  const client = createClient();
+  client.getRichMenuAliasList.mockResolvedValueOnce({ aliases: [] });
+  client.getRichMenuList.mockResolvedValueOnce({ richmenus: [] });
+
+  await setupRichMenus(client as unknown as LineBotClient, {
+    outing: new Blob(["a"]),
+    laundry: new Blob(["b"]),
+  });
+
+  expect(client.createRichMenuAlias.mock.calls).toEqual([
+    [{ richMenuAliasId: "tab-outing", richMenuId: "new-outing" }],
+    [{ richMenuAliasId: "tab-laundry", richMenuId: "new-laundry" }],
+  ]);
+  expect(client.updateRichMenuAlias).not.toHaveBeenCalled();
+  expect(client.deleteRichMenu).not.toHaveBeenCalled();
+  expect(client.setDefaultRichMenu).toHaveBeenCalledExactlyOnceWith("new-outing");
+});
+
+test.each(["setRichMenuImage", "setDefaultRichMenu"] as const)(
+  "%sに失敗しても既存メニューを削除しない",
+  async (method) => {
+    const client = createClient();
+    client[method].mockRejectedValueOnce(new Error("LINE API error"));
+
+    await expect(
+      setupRichMenus(client as unknown as LineBotClient, {
+        outing: new Blob(["a"]),
+        laundry: new Blob(["b"]),
+      }),
+    ).rejects.toThrow("LINE API error");
+
+    expect(client.deleteRichMenu).not.toHaveBeenCalled();
+    if (method === "setRichMenuImage") {
+      expect(client.updateRichMenuAlias).not.toHaveBeenCalled();
+      expect(client.createRichMenuAlias).not.toHaveBeenCalled();
+      expect(client.setDefaultRichMenu).not.toHaveBeenCalled();
+    }
+  },
+);
