@@ -60,7 +60,7 @@ describe("候補と判断", () => {
     const config: DryingConfig = {
       ...DEFAULT_DRYING_CONFIG,
       temperatureRanges: { ...DEFAULT_DRYING_CONFIG.temperatureRanges, cool: { min: 23, max: 25, step: 2 } },
-      capabilities: { modes: ["cool"], fanSpeeds: { cool: ["low"], heat: [], dry: [] }, allowOff: false },
+      capabilities: { modes: ["cool"], fanSpeeds: { cool: ["low"], heat: [], dehumidify: [] }, allowOff: false },
     };
     expect(generateOperationCandidates({ ...context, presenceMode: "away" }, config)).toEqual([
       { mode: "cool", temperature: 23, fanSpeed: "low" },
@@ -106,8 +106,8 @@ describe("候補と判断", () => {
     const config: DryingConfig = {
       ...DEFAULT_DRYING_CONFIG, dryingWeight: 1,
       simulator: { ...simulator, outdoorTemperatureRate: 0, outdoorVaporRate: 0,
-        temperatureRate: { cool: 0, heat: 0, dry: 0 },
-        dehumidificationRate: { cool: 0, heat: 0, dry: 0 } },
+        temperatureRate: { cool: 0, heat: 0, dehumidify: 0 },
+        dehumidificationRate: { cool: 0, heat: 0, dehumidify: 0 } },
     };
     expect(decideNextOperation(context, config).temperature).toBe(24);
     expect(decideNextOperation(context)).toEqual(decideNextOperation(context));
@@ -115,7 +115,7 @@ describe("候補と判断", () => {
     expect(complete.estimatedProgressGain).toBe(0);
     expect(Number.isFinite(complete.score)).toBe(true);
     expect(complete.nextEvaluationMinutes).toBe(60);
-    expect(simulateEnvironment({ ...context, dryingProgress: 0.999 }, { mode: "dry", temperature: 24, fanSpeed: "high" }).estimatedProgressGain).toBeCloseTo(0.001);
+    expect(simulateEnvironment({ ...context, dryingProgress: 0.999 }, { mode: "dehumidify", temperature: 24, fanSpeed: "high" }).estimatedProgressGain).toBeCloseTo(0.001);
   });
 
   it("端数の時間刻みでも一定環境の積分が一致する", () => {

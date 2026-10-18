@@ -40,9 +40,9 @@ export function validateConfig(config: DryingConfig): void {
     assertRange(range.step, 0.1, MAX_SETPOINT - MIN_SETPOINT, "setpoint step");
   }
   for (const mode of config.capabilities.modes) {
-    if (!["cool", "heat", "dry"].includes(mode)) throw new RangeError("Invalid mode");
+    if (!["cool", "heat", "dehumidify"].includes(mode)) throw new RangeError("Invalid mode");
   }
-  for (const mode of ["cool", "heat", "dry"] as const) {
+  for (const mode of ["cool", "heat", "dehumidify"] as const) {
     for (const fan of config.capabilities.fanSpeeds[mode]) {
       if (!["low", "medium", "high"].includes(fan)) throw new RangeError("Invalid fan speed");
     }
@@ -79,7 +79,7 @@ export function validateOperation(operation: Operation, context: DryingContext, 
       assertRange(operation.temperature, range.min, range.max, "setpoint");
       return;
     }
-    case "dry": return;
+    case "dehumidify": return;
     default: {
       const exhaustive: never = operation;
       throw new RangeError(`Invalid mode: ${exhaustive}`);
