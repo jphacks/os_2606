@@ -61,6 +61,7 @@ sudo install -d -o os2606 -g os2606 -m 750 /opt/os_2606 /opt/os_2606/shared
 if ! sudo test -e /opt/os_2606/shared/.env; then
   sudo install -o os2606 -g os2606 -m 600 /dev/null /opt/os_2606/shared/.env
 fi
+sudo chown os2606:os2606 /opt/os_2606/shared/.env
 sudo chmod 600 /opt/os_2606/shared/.env
 sudoedit /opt/os_2606/shared/.env
 ```
