@@ -134,6 +134,70 @@ const dryingProgress = updateObservedProgress(
 `context.dryingProgress` に渡します。観測値の取得、進捗・観測値の保存、
 定期実行と実機操作は呼び出し側で行います。
 
+## LINE handler から乾燥サイクルを動かす
+
+`@os/core/cycle` の `createCycle` は、handler から呼ぶ `leaveHouse()`（行ってきます）と
+`arriveHouse()`（ただいま）を返します。メッセージの解析と LINE への送信は handler 側の責務です。
+アプリケーション起動時に1つ作り、handler 間で共有してください。
+
+```typescript
+import { createCycle } from "@os/core/cycle";
+
+const cycle = createCycle({
+  // 室内センサー・外気データから DryingContext の環境条件を返す。
+  getContext: async () => ({
+    indoorTemperature: 24,
+    indoorHumidity: 70,
+    outdoorTemperature: 18,
+    outdoorHumidity: 60,
+    comfortTemperature: 24,
+  }),
+  remoteControl,
+  onFinishDrying: () => lineApi.sendNotificationFinishDrying(),
+  onError: (error) => console.error("乾燥サイクルの完了処理に失敗", error),
+});
+
+// LINE handler 内の該当する分岐から呼ぶ。
+await cycle.leaveHouse();
+await cycle.arriveHouse();
+
+// アプリケーション終了時。
+await cycle.dispose();
+```
+
+初回の外出・帰宅で乾燥進捗0から運転を開始します。在室状態が変わると実測温湿度から
+進捗を引き継いで再計画します。同じ在室状態の通知は重複として扱い、終了時刻を延長しません。
+予測終了時刻を毎分 cron（`* * * * *`）で確認し、エアコン停止後に完了コールバックを呼びます。
+通知は予測時刻以降の次の cron 実行時です。Infinity の予測では通知しません。
+停止・通知の失敗は `onError` に渡し、次の cron で再試行します。停止済みなら通知だけを再試行します。
+handler からの取得・送信エラーは handler に返します。通知先で受信後に通信が失敗した場合などは、
+再試行によって通知が重複する可能性があります。
+
+状態はメモリ内です。単一プロセスで常駐させる必要があり、再起動時には復元されません。
+完了後は次の外出・帰宅で新しいサイクルを開始します。`dispose()` は cron だけを破棄します。
+
+テストでは入出力に加えて、第2引数で時計・予測・スケジューラを個別に DI できます。
+モジュールのモックや実時間の待機は不要です。具体例は `test/cycle.test.ts` を参照してください。
+
+```typescript
+let tick: () => Promise<void> = async () => {};
+let now = 0;
+const cycle = createCycle(options, {
+  now: () => now,
+  decideNextOperation: () => ({
+    mode: "heat", temperature: 26, fanSpeed: "high", estimatedDryingHours: 1,
+  }),
+  createTask: (_expression, callback) => {
+    tick = callback;
+    return { start() {}, stop() {}, destroy() {} };
+  },
+});
+await cycle.leaveHouse();
+now = 3_600_000;
+await tick(); // モックの停止・完了コールバックを検証できる。
+await cycle.dispose();
+```
+
 ## 検証
 
 `pnpm build`、`pnpm typecheck`、`pnpm test` をリポジトリルートで実行します。
