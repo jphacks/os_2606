@@ -19,6 +19,7 @@ const core = {
   hangLaundryEvidence: vi.fn(async () => {}),
   laundryPositionFromAC: vi.fn(async () => {}),
   setUpHouseConfig: vi.fn(async () => {}),
+  setComfortTemperature: vi.fn(async () => {}),
 } satisfies CoreApi;
 const server = createServer(
   createLineBot(channelSecret, "test-channel-access-token", core),
@@ -185,7 +186,7 @@ test("タブを切り替えても返信しない", async () => {
       {
         type: "postback",
         replyToken: "test-reply-token",
-        postback: { data: "switch-to-laundry-tab" },
+        postback: { data: "switch-to-settings-tab" },
       },
     ],
   });
@@ -194,7 +195,7 @@ test("タブを切り替えても返信しない", async () => {
   expect(replyMessage).not.toHaveBeenCalled();
 });
 
-test("写真を受け取るとダウンロードしてhangLaundryEvidenceに渡す", async () => {
+test("写真を受け取るとダウンロードしてhangLaundryEvidenceに渡し、位置を聞く", async () => {
   getMessageContent.mockResolvedValueOnce({
     httpResponse: new Response(null, {
       headers: { "content-type": "image/png" },
@@ -218,8 +219,13 @@ test("写真を受け取るとダウンロードしてhangLaundryEvidenceに渡�
     data: Buffer.from([1, 2, 3]),
     mimeType: "image/png",
   });
-  expect(replyMessage).toHaveBeenCalledExactlyOnceWith({
-    replyToken: "test-reply-token",
-    messages: [{ type: "text", text: "洗濯物の写真を受け取りました。" }],
+  const [request] = replyMessage.mock.calls[0] ?? [];
+  expect(request?.messages.map((message) => message.type)).toEqual([
+    "text",
+    "flex",
+  ]);
+  expect(request?.messages[0]).toEqual({
+    type: "text",
+    text: "洗濯物の写真を受け取りました。",
   });
 });

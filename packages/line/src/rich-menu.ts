@@ -9,26 +9,26 @@ const TAB_HEIGHT = 200;
 
 // タブを切り替えるときに使う名前（エイリアス）
 const ALIAS = {
-  outing: "tab-outing",
-  laundry: "tab-laundry",
+  home: "tab-home",
+  settings: "tab-settings",
 } as const;
 
-// 上のタブ。左半分が「おでかけ」、右半分が「洗濯物」。
+// 上のタブ。左半分が「ホーム」、右半分が「詳細設定」。
 const tabAreas: messagingApi.RichMenuArea[] = [
   {
     bounds: { x: 0, y: 0, width: 1250, height: TAB_HEIGHT },
     action: {
       type: "richmenuswitch",
-      richMenuAliasId: ALIAS.outing,
-      data: POSTBACK_DATA.switchToOutingTab,
+      richMenuAliasId: ALIAS.home,
+      data: POSTBACK_DATA.switchToHomeTab,
     },
   },
   {
     bounds: { x: 1250, y: 0, width: 1250, height: TAB_HEIGHT },
     action: {
       type: "richmenuswitch",
-      richMenuAliasId: ALIAS.laundry,
-      data: POSTBACK_DATA.switchToLaundryTab,
+      richMenuAliasId: ALIAS.settings,
+      data: POSTBACK_DATA.switchToSettingsTab,
     },
   },
 ];
@@ -46,67 +46,62 @@ function buttonArea(
   };
 }
 
-// タブ「おでかけ」：いってきます／ただいま
-export const outingRichMenu: messagingApi.RichMenuRequest = {
+// タブ「ホーム」：いってきます／もうすぐ帰る／洗濯を干した
+export const homeRichMenu: messagingApi.RichMenuRequest = {
   size: { width: RICH_MENU_WIDTH, height: RICH_MENU_HEIGHT },
   selected: true,
-  name: "おでかけ",
+  name: "ホーム",
   chatBarText: "メニュー",
   areas: [
     ...tabAreas,
-    buttonArea(0, 1250, "いってきます", POSTBACK_DATA.leaveHouse),
-    buttonArea(1250, 1250, "ただいま", POSTBACK_DATA.arriveHouse),
+    buttonArea(0, 833, "いってきます", POSTBACK_DATA.leaveHouse),
+    buttonArea(833, 834, "もうすぐ帰る", POSTBACK_DATA.arriveHouse),
+    buttonArea(1667, 833, "洗濯を干した", POSTBACK_DATA.hangLaundry),
   ],
 };
 
-// タブ「洗濯物」：写真を送る／位置を設定／地域を設定
-export const laundryRichMenu: messagingApi.RichMenuRequest = {
+// タブ「詳細設定」：住んでいる地域／いつもの室温
+export const settingsRichMenu: messagingApi.RichMenuRequest = {
   size: { width: RICH_MENU_WIDTH, height: RICH_MENU_HEIGHT },
   selected: true,
-  name: "洗濯物",
+  name: "詳細設定",
   chatBarText: "メニュー",
   areas: [
     ...tabAreas,
-    buttonArea(0, 833, "写真を送る", POSTBACK_DATA.askLaundryPhoto),
-    buttonArea(833, 834, "位置を設定", POSTBACK_DATA.askLaundryPosition),
-    buttonArea(1667, 833, "地域を設定", POSTBACK_DATA.askRegion),
+    buttonArea(0, 1250, "住んでいる地域", POSTBACK_DATA.askRegion),
+    buttonArea(1250, 1250, "いつもの室温", POSTBACK_DATA.askComfortTemperature),
   ],
 };
 
-// 2枚のリッチメニューをLINEに登録し、「おでかけ」を最初に表示するメニューにする。
-// 何度実行してもよいように、前に登録したものは消してから作り直す。
+// 2枚のリッチメニューをLINEに登録し、「ホーム」を最初に表示するメニューにする。
+// このチャネルのリッチメニューはこの処理だけで管理する前提で、
+// 前に登録したもの（名前を変える前の古いメニューも含む）はすべて消してから作り直す。
 export async function setupRichMenus(
   client: LineBotClient,
-  images: { outing: Blob; laundry: Blob },
+  images: { home: Blob; settings: Blob },
 ): Promise<void> {
-  const aliasIds: string[] = Object.values(ALIAS);
   const { aliases } = await client.getRichMenuAliasList();
   for (const alias of aliases) {
-    if (aliasIds.includes(alias.richMenuAliasId)) {
-      await client.deleteRichMenuAlias(alias.richMenuAliasId);
-    }
+    await client.deleteRichMenuAlias(alias.richMenuAliasId);
   }
-  const names = [outingRichMenu.name, laundryRichMenu.name];
   const { richmenus } = await client.getRichMenuList();
   for (const menu of richmenus) {
-    if (names.includes(menu.name)) {
-      await client.deleteRichMenu(menu.richMenuId);
-    }
+    await client.deleteRichMenu(menu.richMenuId);
   }
 
-  const { richMenuId: outingId } = await client.createRichMenu(outingRichMenu);
-  await client.setRichMenuImage(outingId, images.outing);
-  const { richMenuId: laundryId } =
-    await client.createRichMenu(laundryRichMenu);
-  await client.setRichMenuImage(laundryId, images.laundry);
+  const { richMenuId: homeId } = await client.createRichMenu(homeRichMenu);
+  await client.setRichMenuImage(homeId, images.home);
+  const { richMenuId: settingsId } =
+    await client.createRichMenu(settingsRichMenu);
+  await client.setRichMenuImage(settingsId, images.settings);
 
   await client.createRichMenuAlias({
-    richMenuAliasId: ALIAS.outing,
-    richMenuId: outingId,
+    richMenuAliasId: ALIAS.home,
+    richMenuId: homeId,
   });
   await client.createRichMenuAlias({
-    richMenuAliasId: ALIAS.laundry,
-    richMenuId: laundryId,
+    richMenuAliasId: ALIAS.settings,
+    richMenuId: settingsId,
   });
-  await client.setDefaultRichMenu(outingId);
+  await client.setDefaultRichMenu(homeId);
 }
