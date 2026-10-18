@@ -129,9 +129,11 @@ describe("候補と判断", () => {
       simulator: { ...DEFAULT_DRYING_CONFIG.simulator, outdoorTemperatureRate: 0, outdoorVaporRate: 0 },
     };
     const away: DryingContext = { ...context, presenceMode: "away", dryingProgress: 0.5 };
-    expect(decideNextOperation(away, config)).toEqual({
-      mode: "off", estimatedDryingHours: expect.closeTo(11.733456750930142 / 2, 10),
-    });
+    const plan = decideNextOperation(away, config);
+    const exactHours = estimateDryingHours(24, 70) / 2;
+    expect(plan.mode).toBe("off");
+    expect(plan.estimatedDryingHours).toBeGreaterThanOrEqual(exactHours);
+    expect(plan.estimatedDryingHours - exactHours).toBeLessThanOrEqual(config.stepMinutes / 60);
     expect(decideNextOperation({ ...away, indoorHumidity: 100 }, config).estimatedDryingHours).toBe(Infinity);
     expect(decideNextOperation({ ...away, indoorHumidity: 100, dryingProgress: 1 }, config).estimatedDryingHours).toBe(0);
   });

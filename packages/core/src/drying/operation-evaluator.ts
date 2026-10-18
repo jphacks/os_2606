@@ -17,9 +17,13 @@ export function evaluateOperations(context: DryingContext, config: DryingConfig 
     if (context.presenceMode === "home" && result.operation.mode !== "off") {
       comfortPenalty = config.simulator.fanComfortPenalty[result.operation.fanSpeed];
     }
+    // 温度差2℃の二乗を基準に、快適性も0〜1未満へ単調に正規化する。
+    // 二乗誤差をそのまま加えて乾燥の評価を圧倒することを避ける。
+    const discomfort = result.temperaturePenalty / (2 ** 2) + comfortPenalty;
+    const normalizedDiscomfort = discomfort / (1 + discomfort);
     return {
       ...result,
-      score: -config.dryingWeight * normalizedGain + (1 - config.dryingWeight) * (result.temperaturePenalty + comfortPenalty),
+      score: -config.dryingWeight * normalizedGain + (1 - config.dryingWeight) * normalizedDiscomfort,
     };
   });
 }
