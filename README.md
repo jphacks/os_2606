@@ -1,8 +1,7 @@
 # 室内干しくん
 
-[![IMAGE ALT TEXT HERE](https://jphacks.com/wp-content/uploads/2026/07/IMG_5316.png)](https://www.youtube.com/watch?v=piaNsc6ilBI)
+<img width="196" height="426" alt="IMG_1492" src="https://github.com/user-attachments/assets/4e63863e-d38c-438f-b809-2889b9d632ad" />
 
-<!-- TODO: サムネイル画像とデモ動画のURLを差し替える -->
 
 ## 製品概要
 
