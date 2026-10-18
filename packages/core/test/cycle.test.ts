@@ -31,6 +31,25 @@ function setup() {
   };
 }
 
+test("開始時に予測時間、重複操作には残り時間を返す", async () => {
+  const f = setup();
+  expect(await f.cycle.arriveHouse()).toBeUndefined();
+  expect(await f.cycle.startDrying()).toEqual({ estimatedDryingHours: 1 });
+  f.setTime(900_000);
+  expect(await f.cycle.startDrying()).toEqual({ estimatedDryingHours: 0.75 });
+  expect(f.options.remoteControl.send).toHaveBeenCalledOnce();
+  expect(await f.cycle.leaveHouse()).toEqual({ estimatedDryingHours: 1 });
+  f.setTime(1_800_000);
+  expect(await f.cycle.leaveHouse()).toEqual({ estimatedDryingHours: 0.75 });
+  expect(await f.cycle.arriveHouse()).toEqual({ estimatedDryingHours: 1 });
+});
+
+test("完了時間を予測できない場合はInfinityを返す", async () => {
+  const f = setup();
+  f.decideNextOperation.mockReturnValue({ mode: "off", estimatedDryingHours: Infinity });
+  expect(await f.cycle.startDrying()).toEqual({ estimatedDryingHours: Infinity });
+});
+
 test("洗濯したよで室内モード・進捗0から開始する", async () => {
   const f = setup();
   expect(f.task.start).not.toHaveBeenCalled();

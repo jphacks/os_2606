@@ -89,3 +89,17 @@ test("「洗濯したよ」でstartDryingを呼ぶ", async () => {
   ]);
   expect(core.startDrying).toHaveBeenCalledOnce();
 });
+
+test.each([
+  [1.5, "乾燥完了までの目安：あと約1時間30分です。"],
+  [0.25, "乾燥完了までの目安：あと約15分です。"],
+  [Infinity, "現在の条件では乾燥完了までの時間を予測できません。"],
+  [0, "洗濯物は乾燥が完了した見込みです。"],
+])("写真の返信に予測時間%sを表示する", async (estimatedDryingHours, suffix) => {
+  const image = { data: new Uint8Array(), mimeType: "image/jpeg" };
+  const messages = await handleImage(image, {
+    ...core,
+    hangLaundryEvidence: async () => ({ estimatedDryingHours }),
+  });
+  expect(messages).toEqual([{ type: "text", text: `洗濯物の写真を受け取りました。\n${suffix}` }]);
+});
