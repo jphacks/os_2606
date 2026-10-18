@@ -1,5 +1,5 @@
 export interface AcMessage {
-  acMode: "cool" | "heat" | "dry";
+  acMode: "cool" | "heat" | "dehumidify";
   temperature: number;
   /** Omit to retain the existing setting. */
   fanSpeed?: "low" | "medium" | "high";
