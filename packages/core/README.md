@@ -97,49 +97,27 @@ const decision = decideNextOperation(context, config);
 - 有限な入力のみ許可します（温度−60〜60℃、RH0〜100%、進捗0〜1）。
   `estimateDryingHours` のInfinityは飽和時の意図した出力であり、不正入力は拒否します。
 
-## 観測進捗と定期実行
+## 観測進捗
 
-定期実行で使う `updateObservedProgress` と `EnvironmentObservation` は、
+観測進捗の更新に使う `updateObservedProgress` と `EnvironmentObservation` は、
 既存の利用のため `@os/core` から公開しています（`@os/core/drying` には含めません）。
 `updateObservedProgress` は時刻付きの前回・今回の実測VPDを台形積分します。
 運転計画の推定残り時間から、保存済みの観測進捗を更新することはありません。
 観測間の実際の変動は不明であり、観測進捗も推定です。
 
-`@os/api` の `runDryingCycle(dependencies, options)` をCron等から呼び出してください。
-Cronや天気予報APIクライアント自体は含めません。以下の依存を注入します。
-
-- `readIndoor()`：温湿度と実測時刻（エポックミリ秒）
-- `readForecast()`：次の1時間を代表する最新の外気温湿度
-- `store`：`load`、`save`、処理全体を排他する `withLock`。初期状態は `{ dryingProgress: 0 }`
-- `remoteControl`：既存の `send` / `stop` インターフェース
-- `now()`：現在時刻（エポックミリ秒）
-
 ```typescript
-// dependenciesには上記の実装を注入する。
-await runDryingCycle(dependencies, {
-  presenceMode: "home",
-  comfortTemperature: 24,
-  windDirectionVertical: "down",
-  windDirectionHorizontal: "left",
-});
+import { updateObservedProgress } from "@os/core";
+
+const dryingProgress = updateObservedProgress(
+  0.2,
+  { temperature: 24, humidity: 70, observedAt: 0 },
+  { temperature: 26, humidity: 60, observedAt: 3_600_000 },
+);
 ```
 
-風向きは住宅設定の既存値を渡します。上下と運転モード、左右と洗濯物位置の対応付けは
-呼び出し側が行います。LINEの外出・帰宅処理も在室状態を保存してこの処理へ渡せます。
-帰宅時もエアコンを停止しません。LINEハンドラー・通知・画像解析はここには含めません。
-
-判断を `pending` として保存してから実機へ送り、成功後に観測進捗・観測点・
-`lastApplied` を保存します。送信失敗時は `failed` として旧進捗・旧観測点を保持します。
-初回の観測前には進捗を加算しません。保存と送信は原子的ではないため、
-中断や送信後の保存失敗ではpendingが残ります。pending/failedの次回評価では
-実機状態が不確実とみなし再送します。IRの成功は実機の受信確認とは異なります。
-
-同じ命令の再送を省略し、モード変更は最後の成功送信から最低30分間保留します
-（`minimumModeMinutes`で変更可能）。帰宅時の停止から運転への変更は即時に行います。
-保留時も `decision` は最新の推奨、`lastApplied` は送信済み命令として区別します。
-温度や風量だけの変更にはモード変更の待ち時間を適用しません。
-ストアの排他・永続化、予報や観測の鮮度保証、再試行のスケジュールは呼び出し側で提供します。
-進捗1でも実際の乾燥完了は保証しないため、自動停止や完了通知はここでは行いません。
+返り値は上限1の推定進捗です。更新した値を `decideNextOperation` の
+`context.dryingProgress` に渡します。観測値の取得、進捗・観測値の保存、
+定期実行と実機操作は呼び出し側で行います。
 
 ## 検証
 
