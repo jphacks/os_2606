@@ -17,6 +17,14 @@ const coolingOnly: DryingConfig = {
 };
 
 describe("運転計画の完了予測と採点の回帰テスト", () => {
+  it("実機が送信できる設定だけから選び、候補がなければエラーにする", () => {
+    const config: DryingConfig = {
+      ...DEFAULT_DRYING_CONFIG,
+      isOperationSupported: (operation) => operation.mode === "heat" && operation.temperature === 24 && operation.fanSpeed === "low",
+    };
+    expect(decideNextOperation(summer, config)).toMatchObject({ mode: "heat", temperature: 24, fanSpeed: "low" });
+    expect(() => decideNextOperation(summer, { ...config, isOperationSupported: () => false })).toThrow("No supported operation candidates");
+  });
   it("真夏・在室中の蒸し暑い部屋では、冷房継続による除湿を反映し、423時間ではなく約12時間と予測する", () => {
     const snapshot = structuredClone(summer);
     const configSnapshot = structuredClone(coolingOnly);

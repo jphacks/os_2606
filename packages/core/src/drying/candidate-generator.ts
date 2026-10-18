@@ -37,5 +37,6 @@ export function generateOperationCandidates(context: DryingContext, config: Dryi
   if (context.presenceMode === "away" && config.capabilities.allowOff) {
     operations.push({ mode: "off" });
   }
+  if (config.isOperationSupported) return operations.filter(config.isOperationSupported);
   return operations;
 }

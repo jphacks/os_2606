@@ -4,6 +4,7 @@ import { handleImage, handlePostback, handleText } from "./command.js";
 import { POSTBACK_DATA } from "./postback-data.js";
 
 const core = {
+  startDrying: vi.fn(async () => {}),
   leaveHouse: vi.fn(async () => {}),
   arriveHouse: vi.fn(async () => {}),
   hangLaundryEvidence: vi.fn(async () => {}),
@@ -69,8 +70,8 @@ test.each([
   }
 });
 
-test("文字を打たれてもCoreApiは呼ばず、メニューを案内する", () => {
-  expect(handleText()).toEqual([
+test("その他の文字ではCoreApiを呼ばず、メニューを案内する", async () => {
+  expect(await handleText("こんにちは", core)).toEqual([
     { type: "text", text: "画面下のメニューから選んでください。" },
   ]);
 });
@@ -79,4 +80,12 @@ test("写真を受け取るとhangLaundryEvidenceに渡す", async () => {
   const image = { data: new Uint8Array([1, 2, 3]), mimeType: "image/jpeg" };
   await handleImage(image, core);
   expect(core.hangLaundryEvidence).toHaveBeenCalledExactlyOnceWith(image);
+});
+
+
+test("「洗濯したよ」でstartDryingを呼ぶ", async () => {
+  expect(await handleText("洗濯したよ", core)).toEqual([
+    { type: "text", text: "乾燥を開始しました！" },
+  ]);
+  expect(core.startDrying).toHaveBeenCalledOnce();
 });

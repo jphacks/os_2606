@@ -17,6 +17,7 @@ export function createLineBot(
   channelSecret: string,
   channelAccessToken: string,
   core: CoreApi,
+  allowedUserId?: string,
 ): Express {
   const app = express();
   const client = LineBotClient.fromChannelAccessToken({ channelAccessToken });
@@ -41,7 +42,7 @@ export function createLineBot(
   ): Promise<messagingApi.Message[]> {
     switch (message.type) {
       case "text":
-        return handleText();
+        return handleText(message.text, core);
       case "image":
         return handleImage(await downloadImage(message.id), core);
       default:
@@ -71,6 +72,9 @@ export function createLineBot(
     async (request, response) => {
       const body: webhook.CallbackRequest = request.body;
       for (const event of body.events) {
+        if (allowedUserId && (event.source?.type !== "user" || event.source.userId !== allowedUserId)) {
+          continue;
+        }
         if (
           (event.type !== "message" && event.type !== "postback") ||
           !event.replyToken

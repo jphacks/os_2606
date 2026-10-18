@@ -1,6 +1,5 @@
 import { loadEnvFile } from "node:process";
-import { mockCore } from "./mock-core.js";
-import { createLineBot } from "./index.js";
+import { createApplication, readApplicationConfig } from "./application.js";
 
 try {
   loadEnvFile();
@@ -10,33 +9,28 @@ try {
   }
 }
 
-const channelSecret = process.env.LINE_CHANNEL_SECRET;
-if (!channelSecret?.trim()) {
-  throw new Error("LINE_CHANNEL_SECRETを設定してください。");
-}
+const config = readApplicationConfig(process.env);
+const application = await createApplication(config);
+const server = application.app.listen(config.port, () => {
+  console.log(`LINE Botをポート${config.port}で起動しました。Webhook: /webhook`);
+});
 
-const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-if (!channelAccessToken?.trim()) {
-  throw new Error("LINE_CHANNEL_ACCESS_TOKENを設定してください。");
-}
-
-const port = Number(process.env.PORT ?? 3000);
-if (!Number.isInteger(port) || port < 1 || port > 65535) {
-  throw new Error("PORTには1〜65535の整数を指定してください。");
-}
-
-const server = createLineBot(channelSecret, channelAccessToken, mockCore).listen(
-  port,
-  () => {
-    console.log(`LINE Botをポート${port}で起動しました。Webhook: /webhook`);
-  },
-);
-
-function shutdown(): void {
-  server.close(() => {
-    process.exit(0);
+server.once("close", () => {
+  void application.dispose().catch((error: unknown) => {
+    console.error("乾燥サイクルの終了処理に失敗しました。", error);
+    process.exitCode = 1;
+  });
+});
+server.once("error", (error) => {
+  console.error("LINE Botの起動に失敗しました。", error);
+  process.exitCode = 1;
+  void application.dispose().catch((disposeError: unknown) => {
+    console.error("乾燥サイクルの終了処理に失敗しました。", disposeError);
+  });
+});
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    server.close();
+    server.closeIdleConnections();
   });
 }
-
-process.once("SIGTERM", shutdown);
-process.once("SIGINT", shutdown);

@@ -19,6 +19,7 @@
     "@line/bot-sdk": "^11.3.0",
     "@os/api": "workspace:*",
     "@os/core": "workspace:*",
+    "@os/sensor": "workspace:*",
     "express": "^5.3.0"
   },
   "devDependencies": {

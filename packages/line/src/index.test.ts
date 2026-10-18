@@ -14,6 +14,7 @@ const getMessageContent = vi.spyOn(
   "getMessageContentWithHttpInfo",
 );
 const core = {
+  startDrying: vi.fn(async () => {}),
   leaveHouse: vi.fn(async () => {}),
   arriveHouse: vi.fn(async () => {}),
   hangLaundryEvidence: vi.fn(async () => {}),

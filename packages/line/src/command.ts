@@ -45,9 +45,15 @@ export async function handlePostback(
   }
 }
 
-// 文字を打たれたとき。Coreは呼ばず、メニューを案内する。
-export function handleText(): messagingApi.Message[] {
-  return [menuGuideMessage()];
+// 乾燥開始コマンドを受け付け、その他の文字にはメニューを案内する。
+export async function handleText(text: string, core: CoreApi): Promise<messagingApi.Message[]> {
+  switch (text.trim()) {
+    case "洗濯したよ":
+      await core.startDrying();
+      return [textMessage("乾燥を開始しました！")];
+    default:
+      return [menuGuideMessage()];
+  }
 }
 
 // 写真が送られたとき

@@ -2,6 +2,9 @@ import type { CoreApi } from "@os/api";
 
 // 本物のCoreApiができるまでの仮実装。呼ばれたことをログに出すだけ。
 export const mockCore: CoreApi = {
+  async startDrying() {
+    console.log("[core] startDrying");
+  },
   async leaveHouse() {
     console.log("[core] leaveHouse");
   },

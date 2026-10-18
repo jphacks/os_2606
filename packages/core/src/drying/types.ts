@@ -34,6 +34,8 @@ export interface TemperatureRange {
 }
 
 export interface DryingConfig {
+  /** 実機の通信方式・派生機種で送信できる設定だけを候補にする。 */
+  readonly isOperationSupported?: (operation: Operation) => boolean;
   readonly temperatureRanges: Readonly<Record<"cool" | "heat", TemperatureRange>>;
   readonly capabilities: {
     readonly modes: readonly AirconMode[];

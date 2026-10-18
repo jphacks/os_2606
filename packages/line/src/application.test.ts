@@ -1,0 +1,114 @@
+import { LineBotClient } from "@line/bot-sdk";
+import type { CycleOptions } from "@os/core";
+import { decideNextOperation } from "@os/core/drying";
+import { createHmac } from "node:crypto";
+import { once } from "node:events";
+import { createServer } from "node:http";
+import { beforeEach, expect, test, vi } from "vitest";
+import { createApplication, readApplicationConfig } from "./application.js";
+
+const hardware = vi.hoisted(() => ({
+  now: 0,
+  tick: async () => {},
+  remote: { supports: vi.fn(() => true), send: vi.fn(async () => {}), stop: vi.fn(async () => {}) },
+  sensor: { measure: vi.fn(async () => ({ temperature: 24, humidity: 70 })) },
+  loadRemote: vi.fn(),
+  loadSensor: vi.fn(),
+}));
+vi.mock("@os/sensor", () => ({
+  loadRemoteControl: () => { hardware.loadRemote(); return Promise.resolve(hardware.remote); },
+  loadTemperatureSensor: () => { hardware.loadSensor(); return Promise.resolve(hardware.sensor); },
+}));
+vi.mock("@os/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@os/core")>();
+  return {
+    ...actual,
+    createCycle: (options: CycleOptions) => actual.createCycle(options, {
+      now: () => hardware.now,
+      createTask: (_expression, callback) => {
+        hardware.tick = callback;
+        return { start() {}, stop() {}, destroy() {} };
+      },
+    }),
+  };
+});
+
+const env = {
+  LINE_CHANNEL_SECRET: "test-secret", LINE_CHANNEL_ACCESS_TOKEN: "test-token", LINE_USER_ID: "owner",
+  OUTDOOR_TEMPERATURE: "18", OUTDOOR_HUMIDITY: "60",
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  hardware.now = 0;
+  hardware.remote.supports.mockReturnValue(true);
+});
+
+test("学習データの読み込みに失敗したら仮実装で起動せず、エラーを返す", async () => {
+  hardware.loadRemote.mockImplementationOnce(() => { throw new Error("remote file missing"); });
+  await expect(createApplication(readApplicationConfig(env))).rejects.toThrow("remote file missing");
+  expect(hardware.remote.send).not.toHaveBeenCalled();
+});
+
+test.each(["LINE_USER_ID", "OUTDOOR_TEMPERATURE", "OUTDOOR_HUMIDITY"])("必須設定%sがなければ起動しない", (name) => {
+  expect(() => readApplicationConfig({ ...env, [name]: " " })).toThrow(name);
+});
+test.each([
+  ["PORT", "3000.5"], ["OUTDOOR_TEMPERATURE", "NaN"], ["OUTDOOR_HUMIDITY", "101"], ["COMFORT_TEMPERATURE", "29"],
+])("不正な設定%s=%sで起動しない", (name, value) => {
+  expect(() => readApplicationConfig({ ...env, [name]: value })).toThrow(name);
+});
+
+test("起動時に取得した実機APIにWebhookから到達し、停止後に設定したユーザーへ完了通知する", async () => {
+  const reply = vi.spyOn(LineBotClient.prototype, "replyMessage").mockResolvedValue({ sentMessages: [] });
+  const push = vi.spyOn(LineBotClient.prototype, "pushMessage").mockResolvedValue({ sentMessages: [] });
+  const config = readApplicationConfig(env);
+  const application = await createApplication(config);
+  const server = createServer(application.app);
+  try {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("テスト用ポートがありません。");
+    const port = address.port;
+    async function send(text: string, userId = "owner") {
+      const body = JSON.stringify({ events: [{
+        type: "message", source: { type: "user", userId }, replyToken: "test-reply",
+        message: { type: "text", id: "message-id", text },
+      }] });
+      return fetch(`http://127.0.0.1:${port}/webhook`, {
+        method: "POST", body,
+        headers: { "content-type": "application/json", "x-line-signature": createHmac("sha256", env.LINE_CHANNEL_SECRET).update(body).digest("base64") },
+      });
+    }
+    expect((await send("洗濯したよ", "someone-else")).status).toBe(200);
+    expect(hardware.remote.send).not.toHaveBeenCalled();
+    expect((await send("洗濯したよ")).status).toBe(200);
+    expect(hardware.loadRemote).toHaveBeenCalledOnce();
+    expect(hardware.loadSensor).toHaveBeenCalledOnce();
+    expect(hardware.sensor.measure).toHaveBeenCalledOnce();
+    expect(hardware.remote.supports).toHaveBeenCalled();
+    const expected = decideNextOperation({
+      indoorTemperature: 24, indoorHumidity: 70, outdoorTemperature: 18, outdoorHumidity: 60,
+      comfortTemperature: 24, presenceMode: "home", dryingProgress: 0,
+    });
+    if (expected.mode === "off") throw new Error("在宅の初回計画で停止は選ばれません。");
+    expect(hardware.remote.send).toHaveBeenCalledExactlyOnceWith({
+      acMode: expected.mode, temperature: expected.temperature, fanSpeed: expected.fanSpeed,
+    });
+    expect(reply).toHaveBeenCalledOnce();
+    hardware.now = expected.estimatedDryingHours * 3_600_000;
+    await hardware.tick();
+    expect(hardware.remote.stop).toHaveBeenCalledOnce();
+    expect(push).toHaveBeenCalledExactlyOnceWith({
+      to: "owner", messages: [{ type: "text", text: "洗濯物の乾燥が完了しました。" }],
+    });
+    expect(hardware.remote.stop.mock.invocationCallOrder[0]).toBeLessThan(push.mock.invocationCallOrder[0]!);
+  } finally {
+    await application.dispose();
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    reply.mockRestore();
+    push.mockRestore();
+  }
+});

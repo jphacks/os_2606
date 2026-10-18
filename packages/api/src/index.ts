@@ -27,6 +27,9 @@ export interface Image {
 
 /** LINEから呼び出す、coreが提供するAPI。 */
 export interface CoreApi {
+  /** 洗濯物を干し、在宅モードで乾燥を開始する。 */
+  startDrying(): Promise<void>;
+
   /** 外出を通知する。 */
   leaveHouse(): Promise<void>;
 
