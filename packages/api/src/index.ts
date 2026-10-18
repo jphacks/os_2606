@@ -1,5 +1,5 @@
 export interface AcMessage {
-  acMode: "cool" | "heat" | "dry";
+  acMode: "cool" | "heat" | "dehumidify";
   temperature: number;
   /** Omit to retain the existing setting. */
   fanSpeed?: "low" | "medium" | "high";
@@ -48,5 +48,3 @@ export interface LineApi {
   /** 乾燥の完了を通知する。 */
   sendNotificationFinishDrying(): Promise<void>;
 }
-
-export * from "./drying-cycle.js";

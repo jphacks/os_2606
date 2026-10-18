@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./drying": {
+      "types": "./dist/drying/index.d.ts",
+      "default": "./dist/drying/index.js"
     }
   },
   "scripts": {

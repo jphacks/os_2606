@@ -1,4 +1,4 @@
-export type AirconMode = "cool" | "heat" | "dry";
+export type AirconMode = "cool" | "heat" | "dehumidify";
 export type FanSpeed = "low" | "medium" | "high";
 export type PresenceMode = "home" | "away";
 
@@ -13,23 +13,19 @@ export interface DryingContext {
   outdoorHumidity: number;
   presenceMode: PresenceMode;
   comfortTemperature?: number;
-  /** 観測から積算した未校正の推定進捗。0〜1。 */
-  dryingProgress: number;
+  /** 観測から積算した未校正の推定進捗。0〜1。開始時は省略でき、0として扱う。 */
+  dryingProgress?: number;
 }
 
-export interface DryingDecision {
-  mode: AirconMode | "off";
-  temperature?: number;
-  fanSpeed?: FanSpeed;
-  /** 次の1時間の予測値。観測済みの進捗には加算しない。 */
-  estimatedProgressGain: number;
-  predictedTemperature: number;
-  predictedHumidity: number;
-  /** 消費電力量ではなく、候補を比較するためのコスト。 */
-  score: number;
-  nextEvaluationMinutes: number;
-  reason: string;
-}
+/** 運転時は設定温度（℃）と風量を返す。停止時は両方とも省略する。 */
+export type DryingDecision = Operation & {
+  /**
+   * 選んだ設定と外気条件を固定し、温湿度と進捗を積算した完了時間（時間）。
+   * 時間分解能はconfig.stepMinutes。進捗1なら0。
+   * 最大7日間の予測内で完了しなければInfinity（乾燥不能の断定ではない）。
+   */
+  estimatedDryingHours: number;
+};
 
 export interface TemperatureRange {
   readonly min: number;
